@@ -1,30 +1,100 @@
 var THREE = require('three');
+var CANNON = require('cannon');
 var key = require('keymaster');
+
+var world, player, object, shield, timeStep=1/60;
+var camera, scene, ground, light, webglRenderer, container;
+var playerMesh, playerMiniMesh, objectMesh, objectMiniMesh, shieldMesh;
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
 
-var camera, scene;
-var canvasRenderer, webglRenderer;
+var CAMERA_START_X = 1000;
+var CAMERA_START_Y = 1200;
+var CAMERA_START_Z = 0;
 
-var container, mesh, geometry, plane, cube, light;
-
-var positive = true;
+var SPEED = 2;
 
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
 
-init();
+initCannon();
+initThree();
 animate();
 
-function init() {
+function initCannon() {
+	world = new CANNON.World();
+	world.gravity.set(0,0,0);
+	world.broadphase = new CANNON.NaiveBroadphase();
+	world.solver.iterations = 10;
+	var playerShape = new CANNON.Box(new CANNON.Vec3(30,30,30));
+	var objectShape = new CANNON.Box(new CANNON.Vec3(30,30,30));
+	var shieldShape = new CANNON.Box(new CANNON.Vec3(60,60,60));
+
+	// Collision filter groups - must be powers of 2!
+	var GROUP1 = 1; //player
+	var GROUP2 = 2; //shield
+	var GROUP3 = 4; //object
+	var GROUP4 = 8; //bullet
+
+	//player physics
+	player = new CANNON.Body({
+		mass: 100
+	});
+	player.addShape(playerShape);
+	player.angularVelocity.set(0,1,0);
+	player.angularDamping = 0;
+	player.position.x = 0;
+	player.position.y = 200;
+	player.position.z = 0;
+	player.collisionFilterGroup = GROUP1;
+	player.collisionFilterMask =  GROUP3;
+	player.linearDamping = 0.9;
+	console.log(player);
+	world.add(player);
+
+	//shield physics
+	shield = new CANNON.Body({
+		mass: 1
+	});
+	shield.addShape(shieldShape);
+	shield.angularVelocity.set(0,1,0);
+	shield.angularDamping = 0;
+	shield.position.x = 0;
+	shield.position.y = 200;
+	shield.position.z = 0;
+	shield.collisionFilterGroup = GROUP2;
+	shield.collisionFilterMask =  GROUP4;
+	console.log(shield);
+	world.add(shield);
+
+	//object physics
+	object = new CANNON.Body({
+		mass: 100
+	});
+	object.addShape(objectShape);
+	object.position.x = 1000;
+	object.position.y = 200;
+	object.position.z = 1000;
+	object.quaternion.y = 0.45;
+	object.quaternion.x = 0.90;
+	object.linearDamping = 0.9;
+	object.collisionFilterGroup = GROUP3;
+	object.collisionFilterMask =  GROUP1 | GROUP3;
+	console.log(object);
+	world.add(object);
+}
+
+function initThree() {
 
 	container = document.createElement('div');
 	document.body.appendChild(container);
 
+	//camera
 	camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 100000);
-	camera.position.x = 1200;
-	camera.position.y = 1000;
+	camera.position.x = CAMERA_START_X;
+	camera.position.y = CAMERA_START_Y;
+	camera.position.z = CAMERA_START_Z;
 	camera.lookAt({
 		x: 0,
 		y: 0,
@@ -32,30 +102,81 @@ function init() {
 	});
 
 	scene = new THREE.Scene();
-	
+
+	//ground
+	var groundGeometry = new THREE.PlaneBufferGeometry(10000, 10000);
 	var groundMaterial = new THREE.MeshPhongMaterial({
 		color: 0xffffff
 	});
-	plane = new THREE.Mesh(new THREE.PlaneBufferGeometry(500, 500), groundMaterial);
-	plane.rotation.x = -Math.PI / 2;
-	plane.receiveShadow = true;
+	ground = new THREE.Mesh(groundGeometry, groundMaterial);
+	ground.rotation.x = -Math.PI / 2;
+	ground.receiveShadow = true;
+	ground.position.x = 0;
+	ground.position.y = 0;
+	ground.position.z = 0;
 
-	scene.add(plane);
+	scene.add(ground);
 
-	// LIGHTS
-	scene.add(new THREE.AmbientLight(0x666666));
+	//object
+	var objectGeometry = new THREE.BoxGeometry(50, 50, 50);
+	var objectMaterial = new THREE.MeshPhongMaterial({
+		color: 0xaaaaaa
+	});
+	objectMesh = new THREE.Mesh(objectGeometry, objectMaterial);
+	objectMesh.receiveShadow = true;
+	objectMesh.castShadow = true;
 
-	light = new THREE.DirectionalLight(0xdfebff, 1.75);
-	light.position.set(300, 400, 50);
-	light.position.multiplyScalar(1.3);
+	scene.add(objectMesh);
 
+	//objectMiniMesh
+	var objectMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
+	var objectMiniMaterial = new THREE.MeshLambertMaterial({
+			color: 0xff0000
+	});
+	objectMiniMesh = new THREE.Mesh(objectMiniGeometry, objectMiniMaterial);
+
+	scene.add(objectMiniMesh);
+
+	//playerMesh
+	var playerGeometry = new THREE.BoxGeometry(50, 50, 50);
+	var playerMaterial = new THREE.MeshLambertMaterial({
+			color: 0xcccccc
+	});
+	playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
+	playerMesh.castShadow = true;
+
+	scene.add(playerMesh);
+
+	//playerMiniMesh
+	var playerMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
+	var playerMiniMaterial = new THREE.MeshLambertMaterial({
+			color: 0x000000
+	});
+	playerMiniMesh = new THREE.Mesh(playerMiniGeometry, playerMiniMaterial);
+
+	scene.add(playerMiniMesh);
+
+	//shield
+	var shieldGeometry = new THREE.BoxGeometry(100, 100, 100);
+	var shieldMaterial = new THREE.MeshLambertMaterial({
+			color: 0xcccccc,
+			transparent: true,
+			opacity: 0.3
+	});
+	shieldMesh = new THREE.Mesh(shieldGeometry, shieldMaterial);
+
+	scene.add(shieldMesh);
+
+	//lights
+
+	light = new THREE.DirectionalLight(0xffffff, 1.75);
+	light.position.set(1, 1, 1);
 	light.castShadow = true;
-	light.shadowCameraVisible = true;
 
-	light.shadowMapWidth = 512;
-	light.shadowMapHeight = 512;
+	light.shadowMapWidth = SCREEN_WIDTH;
+	light.shadowMapHeight = SCREEN_HEIGHT;
 
-	var d = 200;
+	var d = 1000;
 
 	light.shadowCameraLeft = -d;
 	light.shadowCameraRight = d;
@@ -63,23 +184,12 @@ function init() {
 	light.shadowCameraBottom = -d;
 
 	light.shadowCameraFar = 1000;
-	light.shadowDarkness = 0.75;
+	light.shadowDarkness = 0.5;
 
-	scene.add(light);
-	
-	var boxgeometry = new THREE.BoxGeometry(100, 100, 100);
-	var boxmaterial = new THREE.MeshLambertMaterial({
-			color: 0xf4f4f4
-	});
-	cube = new THREE.Mesh(boxgeometry, boxmaterial);
-	cube.castShadow = true;
-	cube.position.x = 0;
-	cube.position.y = 100;
-	cube.position.z = 0;
+	camera.add(light);
+	scene.add(camera);
 
-	scene.add(cube);
-
-	// RENDERER
+	//renderer
 	webglRenderer = new THREE.WebGLRenderer();
 	webglRenderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
 	webglRenderer.domElement.style.position = "relative";
@@ -101,35 +211,55 @@ function onWindowResize() {
 }
 
 function animate() {
-	var timer = Date.now() * 0.0002;
-	//light.position.x = Math.cos(timer) * 1000;
-	//light.position.z = Math.sin(timer) * 1000;
 
-	cube.rotation.y += 0.01;
+	player.angularVelocity.set(0,1,0);
 
-	requestAnimationFrame(animate);
-
+	//playerMesh input
 	if(key.isPressed("W")) {
-		console.log('Up');
-		cube.position.x -= 1;
+		player.position.x -= SPEED;
 	}
 	if(key.isPressed("S")) {
-		console.log('Down');
-		cube.position.x += 1;
+		player.position.x += SPEED;
 	}
 	if(key.isPressed("A")) {
-		console.log('Left');
-		cube.position.z += 1;
+		player.position.z += SPEED;
 	}
 	if(key.isPressed("D")) {
-		console.log('Right');
-		cube.position.z -= 1;
+		player.position.z -= SPEED;
 	}
+
+	requestAnimationFrame(animate);
+	updatePhysics();
+
+	//playerMiniMesh should match playerMesh position
+	playerMiniMesh.position.x = playerMesh.position.x + (playerMesh.position.x / 16);
+	playerMiniMesh.position.z = playerMesh.position.z  + (playerMesh.position.z / 16);
+
+	//objectMiniMesh should match objectMesh position
+	objectMiniMesh.position.x = playerMesh.position.x + (objectMesh.position.x / 16);
+	objectMiniMesh.position.z = playerMesh.position.z  + (objectMesh.position.z / 16);
+
+	//camera should match playerMesh position
+	camera.position.x = CAMERA_START_X + playerMesh.position.x;
+	camera.position.z = CAMERA_START_Z + playerMesh.position.z;
+	camera.position.y = CAMERA_START_Y + playerMesh.position.y;
 
 	render();
 }
 
+function updatePhysics() {
+	// Step the physics world
+	world.step(timeStep);
+	// Copy coordinates from Cannon.js to Three.js
+	playerMesh.position.copy(player.position);
+	playerMesh.quaternion.copy(player.quaternion);
+	objectMesh.position.copy(object.position);
+	objectMesh.quaternion.copy(object.quaternion);
+	shieldMesh.position.copy(player.position);
+	shieldMesh.quaternion.copy(player.quaternion);
+}
+
 function render() {
-	camera.lookAt(scene.position);
+	camera.lookAt(playerMesh.position);
 	webglRenderer.render(scene, camera);
 }
