@@ -1,1 +1,11 @@
+npm install
+grunt
+
 TODO
+
+1. Prepare for heroku
+2. Create Scene
+3. Create Camera
+4. Create Player
+5. Move Player
+6. Move Camera

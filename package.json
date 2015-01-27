@@ -1,0 +1,23 @@
+{
+  "name": "litestreak3D",
+  "version": "0.0.0",
+  "description": "litestreak in 3d",
+  "main": "app.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bpeters/litestreak3D.git"
+  },
+  "homepage": "https://github.com/bpeters/litestreak3D",
+  "dependencies": {
+    "express": "^4.11.1",
+    "path": "^0.11.14",
+    "swig": "^1.4.2",
+    "three": "^0.69.0"
+  },
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-browserify": "^3.0.1",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-nodemon": "^0.3.0"
+  }
+}
