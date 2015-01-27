@@ -1,29 +1,130 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 var THREE = require('three');
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
 
-var renderer = new THREE.WebGLRenderer();
-renderer.setSize( window.innerWidth, window.innerHeight );
-document.body.appendChild( renderer.domElement );
+var SCREEN_WIDTH = window.innerWidth;
+var SCREEN_HEIGHT = window.innerHeight;
 
-var geometry = new THREE.BoxGeometry( 1, 1, 1 );
-var material = new THREE.MeshBasicMaterial( { color: 0xfff000 } );
-var cube = new THREE.Mesh( geometry, material );
-scene.add( cube );
+var camera, scene;
+var canvasRenderer, webglRenderer;
 
-camera.position.z = 5;
+var container, mesh, geometry, plane, cube;
 
-var render = function () {
-	requestAnimationFrame( render );
+var positive = true;
 
-	cube.rotation.x += 0.1;
-	cube.rotation.y += 0.1;
+var windowHalfX = window.innerWidth / 2;
+var windowHalfY = window.innerHeight / 2;
 
-	renderer.render(scene, camera);
-};
+init();
+animate();
 
-render();
+function init() {
+
+	container = document.createElement('div');
+	document.body.appendChild(container);
+
+	camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 100000);
+	camera.position.x = 1200;
+	camera.position.y = 1000;
+	camera.lookAt({
+		x: 0,
+		y: 0,
+		z: 0
+	});
+
+	scene = new THREE.Scene();
+	
+	var groundMaterial = new THREE.MeshPhongMaterial({
+		color: 0x6C6C6C
+	});
+	plane = new THREE.Mesh(new THREE.PlaneBufferGeometry(500, 500), groundMaterial);
+	plane.rotation.x = -Math.PI / 2;
+	plane.receiveShadow = true;
+
+	scene.add(plane);
+
+	// LIGHTS
+	scene.add(new THREE.AmbientLight(0x666666));
+
+	var light;
+
+	light = new THREE.DirectionalLight(0xdfebff, 1.75);
+	light.position.set(300, 400, 50);
+	light.position.multiplyScalar(1.3);
+
+	light.castShadow = true;
+	light.shadowCameraVisible = true;
+
+	light.shadowMapWidth = 512;
+	light.shadowMapHeight = 512;
+
+	var d = 200;
+
+	light.shadowCameraLeft = -d;
+	light.shadowCameraRight = d;
+	light.shadowCameraTop = d;
+	light.shadowCameraBottom = -d;
+
+	light.shadowCameraFar = 1000;
+	light.shadowDarkness = 0.2;
+
+	scene.add(light);
+	
+	var boxgeometry = new THREE.BoxGeometry(100, 100, 100);
+	var boxmaterial = new THREE.MeshLambertMaterial({
+			color: 0x0aeedf
+	});
+	cube = new THREE.Mesh(boxgeometry, boxmaterial);
+	cube.castShadow = true;
+	cube.position.x = 0;
+	cube.position.y = 100;
+	cube.position.z = 0;
+
+	scene.add(cube);
+
+	// RENDERER
+	webglRenderer = new THREE.WebGLRenderer();
+	webglRenderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+	webglRenderer.domElement.style.position = "relative";
+	webglRenderer.shadowMapEnabled = true;
+	webglRenderer.shadowMapSoft = true;
+
+	container.appendChild(webglRenderer.domElement);
+	window.addEventListener('resize', onWindowResize, false);
+}
+
+function onWindowResize() {
+	windowHalfX = window.innerWidth / 2;
+	windowHalfY = window.innerHeight / 2;
+
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+
+	webglRenderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+	var timer = Date.now() * 0.0002;
+	camera.position.x = Math.cos(timer) * 1000;
+	camera.position.z = Math.sin(timer) * 1000;
+
+	if (cube.position.x < 100 && positive) {
+		cube.position.x += 1;
+	} else if (cube.position.x > -100 && !positive){
+		cube.position.x -= 1;
+	} else if (cube.position.x === 100){
+		positive = false;
+	} else if (cube.position.x === -100) {
+		positive = true;
+	}
+
+	requestAnimationFrame(animate);
+	render();
+}
+
+function render() {
+	camera.lookAt(scene.position);
+	webglRenderer.render(scene, camera);
+}
 
 },{"three":2}],2:[function(require,module,exports){
 var self = self || {};// File:src/Three.js

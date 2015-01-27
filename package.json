@@ -10,7 +10,6 @@
   "homepage": "https://github.com/bpeters/litestreak3D",
   "dependencies": {
     "express": "^4.11.1",
-    "path": "^0.11.14",
     "swig": "^1.4.2",
     "three": "^0.69.0"
   },
