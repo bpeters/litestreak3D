@@ -3,9 +3,9 @@ var THREE = require('three');
 var CANNON = require('cannon');
 var key = require('keymaster');
 
-var world, player, object, shield, timeStep=1/60;
+var world, player, objects=[], shield, timeStep=1/60;
 var camera, scene, ground, light, webglRenderer, container;
-var playerMesh, playerMiniMesh, objectMesh, objectMiniMesh, shieldMesh;
+var playerMesh, playerMiniMesh, objectMeshs=[], objectMiniMeshs=[], shieldMesh;
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
@@ -51,7 +51,6 @@ function initCannon() {
 	player.collisionFilterGroup = GROUP1;
 	player.collisionFilterMask =  GROUP3;
 	player.linearDamping = 0.9;
-	console.log(player);
 	world.add(player);
 
 	//shield physics
@@ -66,24 +65,29 @@ function initCannon() {
 	shield.position.z = 0;
 	shield.collisionFilterGroup = GROUP2;
 	shield.collisionFilterMask =  GROUP4;
-	console.log(shield);
 	world.add(shield);
 
 	//object physics
-	object = new CANNON.Body({
-		mass: 100
-	});
-	object.addShape(objectShape);
-	object.position.x = 1000;
-	object.position.y = 200;
-	object.position.z = 1000;
-	object.quaternion.y = 0.45;
-	object.quaternion.x = 0.90;
-	object.linearDamping = 0.9;
-	object.collisionFilterGroup = GROUP3;
-	object.collisionFilterMask =  GROUP1 | GROUP3;
-	console.log(object);
-	world.add(object);
+	var objectCount = randomIntFromInterval(1, 100);
+	for (var i = 0; i < objectCount; i++){
+		var mass = randomIntFromInterval(10, 100);
+		var object = new CANNON.Body({
+			mass: mass
+		});
+		object.addShape(objectShape);
+		var randomX = randomIntFromInterval(-5000, 5000);
+		var randomZ = randomIntFromInterval(-5000, 5000);
+		object.position.x = randomX;
+		object.position.y = 200;
+		object.position.z = randomZ;
+		object.quaternion.y = randomIntFromInterval(0, 1);
+		object.quaternion.x = randomIntFromInterval(0, 1);
+		object.linearDamping = 0.9;
+		object.collisionFilterGroup = GROUP3;
+		object.collisionFilterMask =  GROUP1 | GROUP3;
+		objects.push(object);
+		world.add(object);
+	}
 }
 
 function initThree() {
@@ -111,7 +115,6 @@ function initThree() {
 	});
 	ground = new THREE.Mesh(groundGeometry, groundMaterial);
 	ground.rotation.x = -Math.PI / 2;
-	ground.receiveShadow = true;
 	ground.position.x = 0;
 	ground.position.y = 0;
 	ground.position.z = 0;
@@ -119,24 +122,28 @@ function initThree() {
 	scene.add(ground);
 
 	//object
-	var objectGeometry = new THREE.BoxGeometry(50, 50, 50);
-	var objectMaterial = new THREE.MeshPhongMaterial({
-		color: 0xaaaaaa
-	});
-	objectMesh = new THREE.Mesh(objectGeometry, objectMaterial);
-	objectMesh.receiveShadow = true;
-	objectMesh.castShadow = true;
-
-	scene.add(objectMesh);
+	for (var i = 0; i < objects.length; i++) {
+		var objectGeometry = new THREE.BoxGeometry(50, 50, 50);
+		var objectMaterial = new THREE.MeshPhongMaterial({
+			color: 0xaaaaaa
+		});
+		var objectMesh = new THREE.Mesh(objectGeometry, objectMaterial);
+		objectMesh.receiveShadow = true;
+		objectMesh.castShadow = true;
+		scene.add(objectMesh);
+		objectMeshs.push(objectMesh);
+	}
 
 	//objectMiniMesh
-	var objectMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
-	var objectMiniMaterial = new THREE.MeshLambertMaterial({
-			color: 0xff0000
-	});
-	objectMiniMesh = new THREE.Mesh(objectMiniGeometry, objectMiniMaterial);
-
-	scene.add(objectMiniMesh);
+	for (var m = 0; m < objects.length; m++) {
+		var objectMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
+		var objectMiniMaterial = new THREE.MeshLambertMaterial({
+				color: 0xff0000
+		});
+		var objectMiniMesh = new THREE.Mesh(objectMiniGeometry, objectMiniMaterial);
+		scene.add(objectMiniMesh);
+		objectMiniMeshs.push(objectMiniMesh);
+	}
 
 	//playerMesh
 	var playerGeometry = new THREE.BoxGeometry(50, 50, 50);
@@ -237,8 +244,10 @@ function animate() {
 	playerMiniMesh.position.z = playerMesh.position.z  + (playerMesh.position.z / 16);
 
 	//objectMiniMesh should match objectMesh position
-	objectMiniMesh.position.x = playerMesh.position.x + (objectMesh.position.x / 16);
-	objectMiniMesh.position.z = playerMesh.position.z  + (objectMesh.position.z / 16);
+	for (var i = 0; i < objectMiniMeshs.length; i++) {
+		objectMiniMeshs[i].position.x = playerMesh.position.x + (objectMeshs[i].position.x / 16);
+		objectMiniMeshs[i].position.z = playerMesh.position.z  + (objectMeshs[i].position.z / 16);
+	}
 
 	//camera should match playerMesh position
 	camera.position.x = CAMERA_START_X + playerMesh.position.x;
@@ -254,10 +263,18 @@ function updatePhysics() {
 	// Copy coordinates from Cannon.js to Three.js
 	playerMesh.position.copy(player.position);
 	playerMesh.quaternion.copy(player.quaternion);
-	objectMesh.position.copy(object.position);
-	objectMesh.quaternion.copy(object.quaternion);
+
+	for (var i = 0; i < objectMeshs.length; i++) {
+		objectMeshs[i].position.copy(objects[i].position);
+		objectMeshs[i].quaternion.copy(objects[i].quaternion);
+	}
+
 	shieldMesh.position.copy(player.position);
 	shieldMesh.quaternion.copy(player.quaternion);
+}
+
+function randomIntFromInterval(min, max) {
+	return Math.floor(Math.random()*(max-min+1)+min);
 }
 
 function render() {
