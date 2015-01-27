@@ -1,4 +1,5 @@
 var THREE = require('three');
+var key = require('keymaster');
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
@@ -6,7 +7,7 @@ var SCREEN_HEIGHT = window.innerHeight;
 var camera, scene;
 var canvasRenderer, webglRenderer;
 
-var container, mesh, geometry, plane, cube;
+var container, mesh, geometry, plane, cube, light;
 
 var positive = true;
 
@@ -33,7 +34,7 @@ function init() {
 	scene = new THREE.Scene();
 	
 	var groundMaterial = new THREE.MeshPhongMaterial({
-		color: 0x6C6C6C
+		color: 0xffffff
 	});
 	plane = new THREE.Mesh(new THREE.PlaneBufferGeometry(500, 500), groundMaterial);
 	plane.rotation.x = -Math.PI / 2;
@@ -43,8 +44,6 @@ function init() {
 
 	// LIGHTS
 	scene.add(new THREE.AmbientLight(0x666666));
-
-	var light;
 
 	light = new THREE.DirectionalLight(0xdfebff, 1.75);
 	light.position.set(300, 400, 50);
@@ -64,13 +63,13 @@ function init() {
 	light.shadowCameraBottom = -d;
 
 	light.shadowCameraFar = 1000;
-	light.shadowDarkness = 0.2;
+	light.shadowDarkness = 0.75;
 
 	scene.add(light);
 	
 	var boxgeometry = new THREE.BoxGeometry(100, 100, 100);
 	var boxmaterial = new THREE.MeshLambertMaterial({
-			color: 0x0aeedf
+			color: 0xf4f4f4
 	});
 	cube = new THREE.Mesh(boxgeometry, boxmaterial);
 	cube.castShadow = true;
@@ -103,20 +102,30 @@ function onWindowResize() {
 
 function animate() {
 	var timer = Date.now() * 0.0002;
-	camera.position.x = Math.cos(timer) * 1000;
-	camera.position.z = Math.sin(timer) * 1000;
+	//light.position.x = Math.cos(timer) * 1000;
+	//light.position.z = Math.sin(timer) * 1000;
 
-	if (cube.position.x < 100 && positive) {
-		cube.position.x += 1;
-	} else if (cube.position.x > -100 && !positive){
-		cube.position.x -= 1;
-	} else if (cube.position.x === 100){
-		positive = false;
-	} else if (cube.position.x === -100) {
-		positive = true;
-	}
+	cube.rotation.y += 0.01;
 
 	requestAnimationFrame(animate);
+
+	if(key.isPressed("W")) {
+		console.log('Up');
+		cube.position.x -= 1;
+	}
+	if(key.isPressed("S")) {
+		console.log('Down');
+		cube.position.x += 1;
+	}
+	if(key.isPressed("A")) {
+		console.log('Left');
+		cube.position.z += 1;
+	}
+	if(key.isPressed("D")) {
+		console.log('Right');
+		cube.position.z -= 1;
+	}
+
 	render();
 }
 
