@@ -1,20 +1,108 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 var THREE = require('three');
 var CANNON = require('cannon');
-var key = require('keymaster');
 
-var world, player, objects=[], shield, timeStep=1/60;
+// Collision filter groups - must be powers of 2!
+var GROUP1 = 1; //player
+var GROUP2 = 2; //shield
+var GROUP3 = 4; //object
+var GROUP4 = 8; //bullet
+
+var LEVEL = 500;
+
+exports.playerPhysics = function(callback) {
+
+	var playerShape = new CANNON.Box(new CANNON.Vec3(30,30,30));
+
+	var player = new CANNON.Body({
+		mass: 100
+	});
+	player.addShape(playerShape);
+	player.angularVelocity.set(0,1,0);
+	player.angularDamping = 0;
+	player.position.x = 0;
+	player.position.y = LEVEL;
+	player.position.z = 0;
+	player.collisionFilterGroup = GROUP1;
+	player.collisionFilterMask =  GROUP3;
+	player.linearDamping = 0.9;
+
+	return callback(player);
+};
+
+exports.playerMesh = function(callback) {
+
+	var playerGeometry = new THREE.BoxGeometry(50, 50, 50);
+	var playerMaterial = new THREE.MeshLambertMaterial({
+			color: 0xcccccc
+	});
+	var playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
+	playerMesh.castShadow = true;
+
+	return callback(playerMesh);
+};
+
+exports.shieldPhysics = function(callback) {
+
+	var shieldShape = new CANNON.Box(new CANNON.Vec3(60,60,60));
+
+	var shield = new CANNON.Body({
+		mass: 1
+	});
+	shield.addShape(shieldShape);
+	shield.angularVelocity.set(0,1,0);
+	shield.angularDamping = 0;
+	shield.position.x = 0;
+	shield.position.y = LEVEL;
+	shield.position.z = 0;
+	shield.collisionFilterGroup = GROUP2;
+	shield.collisionFilterMask =  GROUP4;
+
+	return callback(shield);
+};
+
+exports.shieldMesh = function(callback) {
+
+	var shieldGeometry = new THREE.BoxGeometry(100, 100, 100);
+	var shieldMaterial = new THREE.MeshLambertMaterial({
+			color: 0xcccccc,
+			transparent: true,
+			opacity: 0.3
+	});
+	var shieldMesh = new THREE.Mesh(shieldGeometry, shieldMaterial);
+
+	return callback(shieldMesh);
+};
+
+},{"cannon":4,"three":6}],2:[function(require,module,exports){
+var THREE = require('three');
+var CANNON = require('cannon');
+var key = require('keymaster');
+var entities = require('./entities');
+
+var world, player, bullets=[], objects=[], shield, timeStep=1/60;
 var camera, scene, ground, light, webglRenderer, container;
-var playerMesh, playerMiniMesh, objectMeshs=[], objectMiniMeshs=[], shieldMesh;
+var playerMesh, playerMiniMesh, objectMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
+
+//CANNON shapes
+var objectShape = new CANNON.Box(new CANNON.Vec3(30,30,30));
+var bulletShape = new CANNON.Box(new CANNON.Vec3(5,5,5));
+
+// Collision filter groups - must be powers of 2!
+var GROUP1 = 1; //player
+var GROUP2 = 2; //shield
+var GROUP3 = 4; //object
+var GROUP4 = 8; //bullet
 
 var CAMERA_START_X = 1000;
 var CAMERA_START_Y = 1200;
 var CAMERA_START_Z = 0;
 
-var SPEED = 2;
+var SPEED = 10;
+var LEVEL = 500;
 
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
@@ -28,43 +116,17 @@ function initCannon() {
 	world.gravity.set(0,0,0);
 	world.broadphase = new CANNON.NaiveBroadphase();
 	world.solver.iterations = 10;
-	var playerShape = new CANNON.Box(new CANNON.Vec3(30,30,30));
-	var objectShape = new CANNON.Box(new CANNON.Vec3(30,30,30));
-	var shieldShape = new CANNON.Box(new CANNON.Vec3(60,60,60));
-
-	// Collision filter groups - must be powers of 2!
-	var GROUP1 = 1; //player
-	var GROUP2 = 2; //shield
-	var GROUP3 = 4; //object
-	var GROUP4 = 8; //bullet
 
 	//player physics
-	player = new CANNON.Body({
-		mass: 100
+	entities.playerPhysics(function(physics) {
+		player = physics;
 	});
-	player.addShape(playerShape);
-	player.angularVelocity.set(0,1,0);
-	player.angularDamping = 0;
-	player.position.x = 0;
-	player.position.y = 200;
-	player.position.z = 0;
-	player.collisionFilterGroup = GROUP1;
-	player.collisionFilterMask =  GROUP3;
-	player.linearDamping = 0.9;
 	world.add(player);
 
 	//shield physics
-	shield = new CANNON.Body({
-		mass: 1
+	entities.shieldPhysics(function(physics) {
+		shield = physics;
 	});
-	shield.addShape(shieldShape);
-	shield.angularVelocity.set(0,1,0);
-	shield.angularDamping = 0;
-	shield.position.x = 0;
-	shield.position.y = 200;
-	shield.position.z = 0;
-	shield.collisionFilterGroup = GROUP2;
-	shield.collisionFilterMask =  GROUP4;
 	world.add(shield);
 
 	//object physics
@@ -75,14 +137,14 @@ function initCannon() {
 			mass: mass
 		});
 		object.addShape(objectShape);
-		var randomX = randomIntFromInterval(-5000, 5000);
-		var randomZ = randomIntFromInterval(-5000, 5000);
+		var randomX = randomIntFromInterval(-2000, 2000);
+		var randomZ = randomIntFromInterval(-2000, 2000);
 		object.position.x = randomX;
-		object.position.y = 200;
+		object.position.y = LEVEL;
 		object.position.z = randomZ;
 		object.quaternion.y = randomIntFromInterval(0, 1);
 		object.quaternion.x = randomIntFromInterval(0, 1);
-		object.linearDamping = 0.9;
+		object.linearDamping = randomIntFromInterval(0.01, 0.9);
 		object.collisionFilterGroup = GROUP3;
 		object.collisionFilterMask =  GROUP1 | GROUP3;
 		objects.push(object);
@@ -94,6 +156,9 @@ function initThree() {
 
 	container = document.createElement('div');
 	document.body.appendChild(container);
+
+	//Add listener for mouse click to shoot bullet
+	container.addEventListener('click', spawnBullet, false);
 
 	//camera
 	camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 100000);
@@ -138,21 +203,20 @@ function initThree() {
 	for (var m = 0; m < objects.length; m++) {
 		var objectMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
 		var objectMiniMaterial = new THREE.MeshLambertMaterial({
-				color: 0xff0000
+			color: 0xff0000,
+			transparent: true,
+			opacity: 0.3
 		});
 		var objectMiniMesh = new THREE.Mesh(objectMiniGeometry, objectMiniMaterial);
+		objectMiniMesh.position.y = LEVEL;
 		scene.add(objectMiniMesh);
 		objectMiniMeshs.push(objectMiniMesh);
 	}
 
 	//playerMesh
-	var playerGeometry = new THREE.BoxGeometry(50, 50, 50);
-	var playerMaterial = new THREE.MeshLambertMaterial({
-			color: 0xcccccc
+	entities.playerMesh(function(mesh) {
+		playerMesh = mesh;
 	});
-	playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
-	playerMesh.castShadow = true;
-
 	scene.add(playerMesh);
 
 	//playerMiniMesh
@@ -161,22 +225,16 @@ function initThree() {
 			color: 0x000000
 	});
 	playerMiniMesh = new THREE.Mesh(playerMiniGeometry, playerMiniMaterial);
-
+	playerMiniMesh.position.y = LEVEL;
 	scene.add(playerMiniMesh);
 
 	//shield
-	var shieldGeometry = new THREE.BoxGeometry(100, 100, 100);
-	var shieldMaterial = new THREE.MeshLambertMaterial({
-			color: 0xcccccc,
-			transparent: true,
-			opacity: 0.3
+	entities.shieldMesh(function(mesh) {
+		shieldMesh = mesh;
 	});
-	shieldMesh = new THREE.Mesh(shieldGeometry, shieldMaterial);
-
 	scene.add(shieldMesh);
 
 	//lights
-
 	light = new THREE.DirectionalLight(0xffffff, 1.75);
 	light.position.set(1, 1, 1);
 	light.castShadow = true;
@@ -218,9 +276,49 @@ function onWindowResize() {
 	webglRenderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+function spawnBullet(e) {
+
+	var r = Math.atan2(e.clientY - (window.innerHeight / 2), e.clientX - (window.innerWidth / 2));
+	console.log(r);
+
+	var vely = Math.sin(r) * 100;
+	var velx =  Math.cos(r) * 100;
+
+	console.log(velx + '-' + vely);
+
+	//bullet physics
+	var bullet = new CANNON.Body({
+		mass: 100
+	});
+	bullet.addShape(bulletShape);
+	bullet.position.x = player.position.x;
+	bullet.position.y = LEVEL;
+	bullet.position.z = player.position.z;
+	bullet.angularVelocity.set(10, 10, 0);
+	bullet.angularDamping = 0.9;
+	bullet.velocity.z = vely;
+	bullet.velocity.x = velx;
+	bullet.collisionFilterGroup = GROUP4;
+	bullet.collisionFilterMask =  GROUP3;
+	bullet.linearDamping = 0.9;
+	world.add(bullet);
+
+	//bullet mesh
+	var bulletGeometry = new THREE.BoxGeometry(10, 10, 10);
+	var bulletMaterial = new THREE.MeshLambertMaterial({
+			color: 0xcccccc
+	});
+	var bulletMesh = new THREE.Mesh(bulletGeometry, bulletMaterial);
+	bulletMesh.castShadow = true;
+	scene.add(bulletMesh);
+
+	bullets.push(bullet);
+	bulletMeshs.push(bulletMesh);
+}
+
 function animate() {
 
-	player.angularVelocity.set(0,1,0);
+	player.position.y = LEVEL;
 
 	//playerMesh input
 	if(key.isPressed("W")) {
@@ -269,6 +367,11 @@ function updatePhysics() {
 		objectMeshs[i].quaternion.copy(objects[i].quaternion);
 	}
 
+	for (var i = 0; i < bulletMeshs.length; i++) {
+		bulletMeshs[i].position.copy(bullets[i].position);
+		bulletMeshs[i].quaternion.copy(bullets[i].quaternion);
+	}
+
 	shieldMesh.position.copy(player.position);
 	shieldMesh.quaternion.copy(player.quaternion);
 }
@@ -282,7 +385,7 @@ function render() {
 	webglRenderer.render(scene, camera);
 }
 
-},{"cannon":3,"keymaster":4,"three":5}],2:[function(require,module,exports){
+},{"./entities":1,"cannon":4,"keymaster":5,"three":6}],3:[function(require,module,exports){
 /*
 var THREE = require('three');
 var CANNON = require('cannon');
@@ -342,7 +445,7 @@ function render() {
 }
 */
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 (function (global){
 /*
  * Copyright (c) 2014 cannon.js Authors
@@ -12034,7 +12137,7 @@ World.prototype.internalStep = function(dt){
 (2)
 });
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 //     keymaster.js
 //     (c) 2011-2013 Thomas Fuchs
 //     keymaster.js may be freely distributed under the MIT license.
@@ -12332,7 +12435,7 @@ World.prototype.internalStep = function(dt){
 
 })(this);
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 var self = self || {};// File:src/Three.js
 
 /**
@@ -47077,4 +47180,4 @@ if (typeof exports !== 'undefined') {
   this['THREE'] = THREE;
 }
 
-},{}]},{},[1,2]);
+},{}]},{},[1,2,3]);

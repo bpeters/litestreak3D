@@ -5,8 +5,8 @@ grunt watch
 TODO
 
 1. Prepare for heroku
-2. Create Scene
-3. Create Camera
-4. Create Player
-5. Move Player
-6. Move Camera
+2. Add player bullet
+3. player stats tied to physics/object
+4. object destruction
+5. granular objects
+
