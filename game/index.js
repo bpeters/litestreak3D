@@ -10,16 +10,6 @@ var playerMesh, playerMiniMesh, objectMeshs=[], objectMiniMeshs=[], shieldMesh, 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
 
-//CANNON shapes
-var objectShape = new CANNON.Box(new CANNON.Vec3(30,30,30));
-var bulletShape = new CANNON.Box(new CANNON.Vec3(5,5,5));
-
-// Collision filter groups - must be powers of 2!
-var GROUP1 = 1; //player
-var GROUP2 = 2; //shield
-var GROUP3 = 4; //object
-var GROUP4 = 8; //bullet
-
 var CAMERA_START_X = 1000;
 var CAMERA_START_Y = 1200;
 var CAMERA_START_Z = 0;
@@ -53,25 +43,11 @@ function initCannon() {
 	world.add(shield);
 
 	//object physics
-	var objectCount = randomIntFromInterval(1, 100);
-	for (var i = 0; i < objectCount; i++){
-		var mass = randomIntFromInterval(10, 100);
-		var object = new CANNON.Body({
-			mass: mass
-		});
-		object.addShape(objectShape);
-		var randomX = randomIntFromInterval(-2000, 2000);
-		var randomZ = randomIntFromInterval(-2000, 2000);
-		object.position.x = randomX;
-		object.position.y = LEVEL;
-		object.position.z = randomZ;
-		object.quaternion.y = randomIntFromInterval(0, 1);
-		object.quaternion.x = randomIntFromInterval(0, 1);
-		object.linearDamping = randomIntFromInterval(0.01, 0.9);
-		object.collisionFilterGroup = GROUP3;
-		object.collisionFilterMask =  GROUP1 | GROUP3;
-		objects.push(object);
-		world.add(object);
+	entities.objectPhysics(function(physics) {
+		objects = physics;
+	});
+	for (var i = 0; i < objects.length; i++){
+		world.add(objects[i]);
 	}
 }
 
@@ -109,18 +85,34 @@ function initThree() {
 
 	scene.add(ground);
 
-	//object
-	for (var i = 0; i < objects.length; i++) {
-		var objectGeometry = new THREE.BoxGeometry(50, 50, 50);
-		var objectMaterial = new THREE.MeshPhongMaterial({
-			color: 0xaaaaaa
-		});
-		var objectMesh = new THREE.Mesh(objectGeometry, objectMaterial);
-		objectMesh.receiveShadow = true;
-		objectMesh.castShadow = true;
-		scene.add(objectMesh);
-		objectMeshs.push(objectMesh);
+	//playerMesh
+	entities.playerMesh(function(mesh) {
+		playerMesh = mesh;
+	});
+	scene.add(playerMesh);
+
+	//shieldMesh
+	entities.shieldMesh(function(mesh) {
+		shieldMesh = mesh;
+	});
+	scene.add(shieldMesh);
+
+	//objectMesh
+	entities.objectMesh(objects, function(mesh) {
+		objectMeshs = mesh;
+	});
+	for (var i = 0; i < objectMeshs.length; i++){
+		scene.add(objectMeshs[i]);
 	}
+
+	//playerMiniMesh
+	var playerMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
+	var playerMiniMaterial = new THREE.MeshLambertMaterial({
+			color: 0x000000
+	});
+	playerMiniMesh = new THREE.Mesh(playerMiniGeometry, playerMiniMaterial);
+	playerMiniMesh.position.y = LEVEL;
+	scene.add(playerMiniMesh);
 
 	//objectMiniMesh
 	for (var m = 0; m < objects.length; m++) {
@@ -135,27 +127,6 @@ function initThree() {
 		scene.add(objectMiniMesh);
 		objectMiniMeshs.push(objectMiniMesh);
 	}
-
-	//playerMesh
-	entities.playerMesh(function(mesh) {
-		playerMesh = mesh;
-	});
-	scene.add(playerMesh);
-
-	//playerMiniMesh
-	var playerMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
-	var playerMiniMaterial = new THREE.MeshLambertMaterial({
-			color: 0x000000
-	});
-	playerMiniMesh = new THREE.Mesh(playerMiniGeometry, playerMiniMaterial);
-	playerMiniMesh.position.y = LEVEL;
-	scene.add(playerMiniMesh);
-
-	//shield
-	entities.shieldMesh(function(mesh) {
-		shieldMesh = mesh;
-	});
-	scene.add(shieldMesh);
 
 	//lights
 	light = new THREE.DirectionalLight(0xffffff, 1.75);
@@ -202,48 +173,41 @@ function onWindowResize() {
 function spawnBullet(e) {
 
 	var r = Math.atan2(e.clientY - (window.innerHeight / 2), e.clientX - (window.innerWidth / 2));
-	console.log(r);
 
-	var vely = Math.sin(r) * 100;
-	var velx =  Math.cos(r) * 100;
+	var velx =  Math.sin(r) * 1000;
+	var velz = -1 * (Math.cos(r) * 1000);
 
-	console.log(velx + '-' + vely);
+	console.log(velx +'   ' + velz);
+
+	var data = {
+		velx: velx,
+		velz: velz,
+		x: player.position.x,
+		z: player.position.z,
+	};
 
 	//bullet physics
-	var bullet = new CANNON.Body({
-		mass: 100
+	entities.bulletPhysics(data, function(physics) {
+		bullet = physics;
 	});
-	bullet.addShape(bulletShape);
-	bullet.position.x = player.position.x;
-	bullet.position.y = LEVEL;
-	bullet.position.z = player.position.z;
-	bullet.angularVelocity.set(10, 10, 0);
-	bullet.angularDamping = 0.9;
-	bullet.velocity.z = vely;
-	bullet.velocity.x = velx;
-	bullet.collisionFilterGroup = GROUP4;
-	bullet.collisionFilterMask =  GROUP3;
-	bullet.linearDamping = 0.9;
+	console.log(bullet);
 	world.add(bullet);
+	bullets.push(bullet);
 
 	//bullet mesh
-	var bulletGeometry = new THREE.BoxGeometry(10, 10, 10);
-	var bulletMaterial = new THREE.MeshLambertMaterial({
-			color: 0xcccccc
+	entities.bulletMesh(function(mesh) {
+		bulletMesh = mesh;
 	});
-	var bulletMesh = new THREE.Mesh(bulletGeometry, bulletMaterial);
-	bulletMesh.castShadow = true;
 	scene.add(bulletMesh);
-
-	bullets.push(bullet);
 	bulletMeshs.push(bulletMesh);
+
 }
 
 function animate() {
 
 	player.position.y = LEVEL;
 
-	//playerMesh input
+	//player input
 	if(key.isPressed("W")) {
 		player.position.x -= SPEED;
 	}

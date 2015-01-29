@@ -9,6 +9,10 @@ var GROUP4 = 8; //bullet
 
 var LEVEL = 500;
 
+function randomIntFromInterval(min, max) {
+	return Math.floor(Math.random()*(max-min+1)+min);
+}
+
 exports.playerPhysics = function(callback) {
 
 	var playerShape = new CANNON.Box(new CANNON.Vec3(30,30,30));
@@ -71,4 +75,84 @@ exports.shieldMesh = function(callback) {
 	var shieldMesh = new THREE.Mesh(shieldGeometry, shieldMaterial);
 
 	return callback(shieldMesh);
+};
+
+exports.objectPhysics = function(callback) {
+
+	var objectCount = randomIntFromInterval(1, 100);
+	var objects = [];
+
+	for (var i = 0; i < objectCount; i++){
+		var objectShape = new CANNON.Box(new CANNON.Vec3(30,30,30));
+		var mass = randomIntFromInterval(10, 100);
+		var object = new CANNON.Body({
+			mass: mass
+		});
+		object.addShape(objectShape);
+		var randomX = randomIntFromInterval(-2000, 2000);
+		var randomZ = randomIntFromInterval(-2000, 2000);
+		object.position.x = randomX;
+		object.position.y = LEVEL;
+		object.position.z = randomZ;
+		object.quaternion.y = randomIntFromInterval(0, 1);
+		object.quaternion.x = randomIntFromInterval(0, 1);
+		object.linearDamping = randomIntFromInterval(0.01, 0.9);
+		object.collisionFilterGroup = GROUP3;
+		object.collisionFilterMask =  GROUP1 | GROUP3 | GROUP4;
+		objects.push(object);
+	}
+
+	return callback(objects);
+};
+
+exports.objectMesh = function(objects, callback) {
+
+	var objectMeshs = [];
+
+	for (var i = 0; i < objects.length; i++) {
+		var objectGeometry = new THREE.BoxGeometry(50, 50, 50);
+		var objectMaterial = new THREE.MeshPhongMaterial({
+			color: 0xaaaaaa
+		});
+		var objectMesh = new THREE.Mesh(objectGeometry, objectMaterial);
+		objectMesh.receiveShadow = true;
+		objectMesh.castShadow = true;
+		objectMeshs.push(objectMesh);
+	}
+
+	return callback(objectMeshs);
+};
+
+exports.bulletPhysics = function(data, callback) {
+
+	var bulletShape = new CANNON.Box(new CANNON.Vec3(5,5,5));
+
+	var bullet = new CANNON.Body({
+		mass: 100
+	});
+	bullet.addShape(bulletShape);
+	bullet.position.x = data.x;
+	bullet.position.y = LEVEL;
+	bullet.position.z = data.z;
+	bullet.angularVelocity.set(10, 10, 0);
+	bullet.angularDamping = 0.9;
+	bullet.velocity.x = data.velx;
+	bullet.velocity.z = data.velz;
+	bullet.collisionFilterGroup = GROUP4;
+	bullet.collisionFilterMask =  GROUP3 | GROUP4;
+	bullet.linearDamping = 0.9;
+
+	return callback(bullet);
+};
+
+exports.bulletMesh = function(callback) {
+
+	var bulletGeometry = new THREE.BoxGeometry(10, 10, 10);
+	var bulletMaterial = new THREE.MeshLambertMaterial({
+			color: 0xcccccc
+	});
+	var bulletMesh = new THREE.Mesh(bulletGeometry, bulletMaterial);
+	bulletMesh.castShadow = true;
+
+	return callback(bulletMesh);
 };
