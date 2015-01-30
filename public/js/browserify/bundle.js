@@ -63,9 +63,11 @@ exports.playerMesh = function(health, callback) {
 	return callback(playerMesh);
 };
 
-exports.playerMiniMesh = function(callback) {
+exports.playerMiniMesh = function(health, callback) {
 
-	var playerMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
+	var h = health / 16;
+
+	var playerMiniGeometry = new THREE.BoxGeometry(h, h, h);
 	var playerMiniMaterial = new THREE.MeshLambertMaterial({
 			color: 0x000000,
 			transparent: true,
@@ -119,8 +121,8 @@ exports.objectPhysics = function(callback) {
 	var objects = [];
 
 	for (var i = 0; i < objectCount; i++){
-		var objectShape = new CANNON.Box(new CANNON.Vec3(30,30,30));
 		var mass = randomIntFromInterval(10, 100);
+		var objectShape = new CANNON.Box(new CANNON.Vec3(mass,mass,mass));
 		var object = new CANNON.Body({
 			mass: mass
 		});
@@ -146,7 +148,8 @@ exports.objectMesh = function(objects, callback) {
 	var objectMeshs = [];
 
 	for (var i = 0; i < objects.length; i++) {
-		var objectGeometry = new THREE.BoxGeometry(50, 50, 50);
+		var m = objects[i].mass;
+		var objectGeometry = new THREE.BoxGeometry(m, m, m);
 		var objectMaterial = new THREE.MeshPhongMaterial({
 			color: 0xaaaaaa
 		});
@@ -163,8 +166,9 @@ exports.objectMiniMesh = function(objects, callback) {
 
 	var objectMiniMeshs = [];
 
-	for (var m = 0; m < objects.length; m++) {
-		var objectMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
+	for (var i = 0; i < objects.length; i++) {
+		var m = objects[i].mass / 16;
+		var objectMiniGeometry = new THREE.BoxGeometry(m, m, m);
 		var objectMiniMaterial = new THREE.MeshLambertMaterial({
 			color: 0xff0000,
 			transparent: true,
@@ -326,7 +330,7 @@ function initThree() {
 	scene.add(playerMesh);
 
 	//playerMiniMesh
-	entities.playerMiniMesh(function(mesh) {
+	entities.playerMiniMesh(HEALTH, function(mesh) {
 		playerMiniMesh = mesh;
 	});
 	scene.add(playerMiniMesh);
@@ -448,11 +452,13 @@ function updatePlayerHealth() {
 	NEW_HEALTH = NEW_HEALTH + 1;
 	var h = NEW_HEALTH + 20;
 	var s = NEW_SHIELD + NEW_HEALTH;
+	var m = NEW_HEALTH / 16;
 	player.shapes[0] = new CANNON.Box(new CANNON.Vec3(NEW_HEALTH, NEW_HEALTH, NEW_HEALTH));
 	player.mass = NEW_HEALTH;
 	player.updateMassProperties();
 	shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(s, s, s));
 	playerMesh.geometry = new THREE.BoxGeometry(h, h, h);
+	playerMiniMesh.geometry = new THREE.BoxGeometry(m, m, m);
 	shieldMesh.geometry = new THREE.BoxGeometry(s, s, s);
 	document.getElementById("health").innerHTML = NEW_HEALTH;
 	document.getElementById("credits").innerHTML = NEW_CREDITS;

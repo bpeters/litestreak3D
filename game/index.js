@@ -111,7 +111,7 @@ function initThree() {
 	scene.add(playerMesh);
 
 	//playerMiniMesh
-	entities.playerMiniMesh(function(mesh) {
+	entities.playerMiniMesh(HEALTH, function(mesh) {
 		playerMiniMesh = mesh;
 	});
 	scene.add(playerMiniMesh);
@@ -233,11 +233,13 @@ function updatePlayerHealth() {
 	NEW_HEALTH = NEW_HEALTH + 1;
 	var h = NEW_HEALTH + 20;
 	var s = NEW_SHIELD + NEW_HEALTH;
+	var m = NEW_HEALTH / 16;
 	player.shapes[0] = new CANNON.Box(new CANNON.Vec3(NEW_HEALTH, NEW_HEALTH, NEW_HEALTH));
 	player.mass = NEW_HEALTH;
 	player.updateMassProperties();
 	shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(s, s, s));
 	playerMesh.geometry = new THREE.BoxGeometry(h, h, h);
+	playerMiniMesh.geometry = new THREE.BoxGeometry(m, m, m);
 	shieldMesh.geometry = new THREE.BoxGeometry(s, s, s);
 	document.getElementById("health").innerHTML = NEW_HEALTH;
 	document.getElementById("credits").innerHTML = NEW_CREDITS;
