@@ -66,7 +66,9 @@ exports.playerMiniMesh = function(callback) {
 
 	var playerMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
 	var playerMiniMaterial = new THREE.MeshLambertMaterial({
-			color: 0x000000
+			color: 0x000000,
+			transparent: true,
+			opacity: 0.9
 	});
 	var playerMiniMesh = new THREE.Mesh(playerMiniGeometry, playerMiniMaterial);
 	playerMiniMesh.position.y = LEVEL + 200;

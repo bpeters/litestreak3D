@@ -29,6 +29,8 @@ var NEW_CREDITS = CREDITS;
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
 
+var toggleOn = true;
+
 initHTML();
 initCannon();
 initThree();
@@ -76,6 +78,12 @@ function initThree() {
 	//Add listener for mouse click to shoot bullet
 	container.addEventListener('click', spawnBullet, false);
 	container.addEventListener('dblclick', spawnBullet, false);
+
+	//Toggle mini map.
+	key('tab', function(){
+		toggleMiniMap();
+		return false;
+	});
 
 	//camera
 	camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 100000);
@@ -202,6 +210,22 @@ function spawnBullet(e) {
 	scene.add(bulletMesh);
 	bulletMeshs.push(bulletMesh);
 
+}
+
+function toggleMiniMap() {
+	if (toggleOn) {
+		playerMiniMesh.material.opacity = 0;
+		for (var i = 0; i < objectMiniMeshs.length; i++) {
+			objectMiniMeshs[i].material.opacity = 0;
+		}
+		toggleOn = false;
+	} else {
+		playerMiniMesh.material.opacity = 0.9;
+		for (var i = 0; i < objectMiniMeshs.length; i++) {
+			objectMiniMeshs[i].material.opacity = 0.3;
+		}
+		toggleOn = true;
+	}
 }
 
 function updatePlayerHealth() {
