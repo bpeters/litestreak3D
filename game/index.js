@@ -14,18 +14,32 @@ var CAMERA_START_X = 1000;
 var CAMERA_START_Y = 1200;
 var CAMERA_START_Z = 0;
 
-var SPEED = 10;
 var LEVEL = 500;
+
 var HEALTH = 30;
 var SHIELD = 60;
+var SPEED = 10;
 var CREDITS = 100;
+
+var NEW_HEALTH = HEALTH;
+var NEW_SHIELD = SHIELD;
+var NEW_SPEED = SPEED;
+var NEW_CREDITS = CREDITS;
 
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
 
+initHTML();
 initCannon();
 initThree();
 animate();
+
+function initHTML() {
+	document.getElementById("health").innerHTML = NEW_HEALTH;
+	document.getElementById("shield").innerHTML = NEW_SHIELD;
+	document.getElementById("speed").innerHTML = NEW_SPEED;
+	document.getElementById("credits").innerHTML = NEW_CREDITS;
+}
 
 function initCannon() {
 	world = new CANNON.World();
@@ -61,6 +75,7 @@ function initThree() {
 
 	//Add listener for mouse click to shoot bullet
 	container.addEventListener('click', spawnBullet, false);
+	container.addEventListener('dblclick', spawnBullet, false);
 
 	//camera
 	camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 100000);
@@ -159,6 +174,8 @@ function onWindowResize() {
 
 function spawnBullet(e) {
 
+	e.preventDefault();
+
 	var r = Math.atan2(e.clientY - (window.innerHeight / 2), e.clientX - (window.innerWidth / 2));
 
 	var velx =  Math.sin(r) * 2000;
@@ -188,7 +205,14 @@ function spawnBullet(e) {
 }
 
 function updatePlayerHealth() {
-	console.log(playerMesh);
+	NEW_CREDITS = NEW_CREDITS - 1;
+	NEW_HEALTH = NEW_HEALTH + 1;
+	var h = NEW_HEALTH + 20;
+	var s = NEW_SHIELD + NEW_HEALTH;
+	playerMesh.geometry = new THREE.BoxGeometry(h, h, h);
+	shieldMesh.geometry = new THREE.BoxGeometry(s, s, s);
+	document.getElementById("health").innerHTML = NEW_HEALTH;
+	document.getElementById("credits").innerHTML = NEW_CREDITS;
 }
 
 function animate() {
@@ -208,7 +232,7 @@ function animate() {
 	if(key.isPressed("D")) {
 		player.position.z -= SPEED;
 	}
-	if(key.isPressed("1")) {
+	if(key.isPressed("1") && NEW_CREDITS >= 1) {
 		updatePlayerHealth();
 	}
 

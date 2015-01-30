@@ -69,7 +69,7 @@ exports.playerMiniMesh = function(callback) {
 			color: 0x000000
 	});
 	var playerMiniMesh = new THREE.Mesh(playerMiniGeometry, playerMiniMaterial);
-	playerMiniMesh.position.y = LEVEL;
+	playerMiniMesh.position.y = LEVEL + 200;
 
 	return callback(playerMiniMesh);
 };
@@ -168,7 +168,7 @@ exports.objectMiniMesh = function(objects, callback) {
 			opacity: 0.3
 		});
 		var objectMiniMesh = new THREE.Mesh(objectMiniGeometry, objectMiniMaterial);
-		objectMiniMesh.position.y = LEVEL;
+		objectMiniMesh.position.y = LEVEL + 200;
 		objectMiniMeshs.push(objectMiniMesh);
 	}
 

@@ -1,0 +1,27 @@
+.stats {
+	position: absolute;
+  z-index: 1000;
+  font-size: 20px;
+  font-weight: bold;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -ms-user-select: none;
+}
+#health {
+  top: 20px;
+  left: 20px;
+}
+#shield {
+  top: 60px;
+  left: 20px;
+}
+#speed {
+  top: 100px;
+  left: 20px;
+}
+#credits {
+  top: 140px;
+  left: 20px;
+}
+
