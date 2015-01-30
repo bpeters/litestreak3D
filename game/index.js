@@ -3,6 +3,7 @@ var CANNON = require('cannon');
 var key = require('keymaster');
 var entities = require('./entities');
 
+var shootSound, collisionSound, music;
 var world, player, bullets=[], objects=[], shield, timeStep=1/60;
 var camera, scene, light, webglRenderer, container;
 var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
@@ -29,12 +30,42 @@ var NEW_CREDITS = CREDITS;
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
 
-var toggleOn = true;
+var toggleMapOn = true;
+var toggleSoundOn = false;
 
+//sounds
+var sounds = [
+	{src:"music.mp3", id:"music"},
+	{src:"music2.mp3", id:"music2"},
+	{src:"shoot.wav", id:"shoot"},
+	{src:"collision.wav", id:"collision"}
+];
+
+initSound();
 initHTML();
 initCannon();
 initThree();
 animate();
+
+function initSound () {
+	createjs.Sound.registerSounds(sounds, "assets/");
+	setTimeout(function(){
+		music = createjs.Sound.play("music2", {loop: -1});
+		shootSound = createjs.Sound.createInstance("shoot");
+		collisionSound = createjs.Sound.createInstance("collision");
+	}, 3000);
+	document.getElementById('music').onclick = function () {
+		if (toggleSoundOn && music) {
+			music.resume();
+			toggleSoundOn = false;
+			document.getElementById("volume").className = "fa fa-volume-up";
+		} else if (music) {
+			music.pause();
+			toggleSoundOn = true;
+			document.getElementById("volume").className = "fa fa-volume-off";
+		}
+	};
+}
 
 function initHTML() {
 	document.getElementById("health").innerHTML = NEW_HEALTH;
@@ -54,6 +85,16 @@ function initCannon() {
 		player = physics;
 	});
 	world.add(player);
+
+	player.addEventListener("collide",function(e){
+		if (e.body) {
+			if(collisionSound) {
+				collisionSound.play();
+			}
+		}
+		console.log("Collided with body:",e.body);
+		console.log("Contact between bodies:",e.contact);
+	});
 
 	//shield physics
 	entities.shieldPhysics(SHIELD, HEALTH, function(physics) {
@@ -184,6 +225,10 @@ function spawnBullet(e) {
 
 	e.preventDefault();
 
+	if(shootSound) {
+		shootSound.play();
+	}
+
 	var r = Math.atan2(e.clientY - (window.innerHeight / 2), e.clientX - (window.innerWidth / 2));
 
 	var velx =  Math.sin(r) * 2000;
@@ -213,18 +258,18 @@ function spawnBullet(e) {
 }
 
 function toggleMiniMap() {
-	if (toggleOn) {
+	if (toggleMapOn) {
 		playerMiniMesh.material.opacity = 0;
 		for (var i = 0; i < objectMiniMeshs.length; i++) {
 			objectMiniMeshs[i].material.opacity = 0;
 		}
-		toggleOn = false;
+		toggleMapOn = false;
 	} else {
 		playerMiniMesh.material.opacity = 0.9;
 		for (var i = 0; i < objectMiniMeshs.length; i++) {
 			objectMiniMeshs[i].material.opacity = 0.3;
 		}
-		toggleOn = true;
+		toggleMapOn = true;
 	}
 }
 

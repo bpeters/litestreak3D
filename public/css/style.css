@@ -8,20 +8,28 @@
   -khtml-user-select: none;
   -ms-user-select: none;
 }
-#health {
+#music {
   top: 20px;
   left: 20px;
 }
-#shield {
+#music:hover {
+  cursor: pointer;
+  color: #222222;
+}
+#health {
   top: 60px;
   left: 20px;
 }
-#speed {
+#shield {
   top: 100px;
   left: 20px;
 }
-#credits {
+#speed {
   top: 140px;
+  left: 20px;
+}
+#credits {
+  top: 180px;
   left: 20px;
 }
 
