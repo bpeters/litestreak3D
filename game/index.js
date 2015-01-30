@@ -4,8 +4,8 @@ var key = require('keymaster');
 var entities = require('./entities');
 
 var world, player, bullets=[], objects=[], shield, timeStep=1/60;
-var camera, scene, ground, light, webglRenderer, container;
-var playerMesh, playerMiniMesh, objectMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
+var camera, scene, light, webglRenderer, container;
+var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
@@ -16,6 +16,9 @@ var CAMERA_START_Z = 0;
 
 var SPEED = 10;
 var LEVEL = 500;
+var HEALTH = 30;
+var SHIELD = 60;
+var CREDITS = 100;
 
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
@@ -31,13 +34,13 @@ function initCannon() {
 	world.solver.iterations = 10;
 
 	//player physics
-	entities.playerPhysics(function(physics) {
+	entities.playerPhysics(HEALTH, function(physics) {
 		player = physics;
 	});
 	world.add(player);
 
 	//shield physics
-	entities.shieldPhysics(function(physics) {
+	entities.shieldPhysics(SHIELD, HEALTH, function(physics) {
 		shield = physics;
 	});
 	world.add(shield);
@@ -73,26 +76,25 @@ function initThree() {
 	scene = new THREE.Scene();
 
 	//ground
-	var groundGeometry = new THREE.PlaneBufferGeometry(10000, 10000);
-	var groundMaterial = new THREE.MeshPhongMaterial({
-		color: 0xffffff
+	entities.groundMesh(function(mesh) {
+		groundMesh = mesh;
 	});
-	ground = new THREE.Mesh(groundGeometry, groundMaterial);
-	ground.rotation.x = -Math.PI / 2;
-	ground.position.x = 0;
-	ground.position.y = 0;
-	ground.position.z = 0;
-
-	scene.add(ground);
+	scene.add(groundMesh);
 
 	//playerMesh
-	entities.playerMesh(function(mesh) {
+	entities.playerMesh(HEALTH, function(mesh) {
 		playerMesh = mesh;
 	});
 	scene.add(playerMesh);
 
+	//playerMiniMesh
+	entities.playerMiniMesh(function(mesh) {
+		playerMiniMesh = mesh;
+	});
+	scene.add(playerMiniMesh);
+
 	//shieldMesh
-	entities.shieldMesh(function(mesh) {
+	entities.shieldMesh(SHIELD, HEALTH, function(mesh) {
 		shieldMesh = mesh;
 	});
 	scene.add(shieldMesh);
@@ -105,27 +107,12 @@ function initThree() {
 		scene.add(objectMeshs[i]);
 	}
 
-	//playerMiniMesh
-	var playerMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
-	var playerMiniMaterial = new THREE.MeshLambertMaterial({
-			color: 0x000000
-	});
-	playerMiniMesh = new THREE.Mesh(playerMiniGeometry, playerMiniMaterial);
-	playerMiniMesh.position.y = LEVEL;
-	scene.add(playerMiniMesh);
-
 	//objectMiniMesh
-	for (var m = 0; m < objects.length; m++) {
-		var objectMiniGeometry = new THREE.BoxGeometry(5, 5, 5);
-		var objectMiniMaterial = new THREE.MeshLambertMaterial({
-			color: 0xff0000,
-			transparent: true,
-			opacity: 0.3
-		});
-		var objectMiniMesh = new THREE.Mesh(objectMiniGeometry, objectMiniMaterial);
-		objectMiniMesh.position.y = LEVEL;
-		scene.add(objectMiniMesh);
-		objectMiniMeshs.push(objectMiniMesh);
+	entities.objectMiniMesh(objects, function(mesh) {
+		objectMiniMeshs = mesh;
+	});
+	for (var i = 0; i < objectMiniMeshs.length; i++){
+		scene.add(objectMiniMeshs[i]);
 	}
 
 	//lights
@@ -174,10 +161,8 @@ function spawnBullet(e) {
 
 	var r = Math.atan2(e.clientY - (window.innerHeight / 2), e.clientX - (window.innerWidth / 2));
 
-	var velx =  Math.sin(r) * 1000;
-	var velz = -1 * (Math.cos(r) * 1000);
-
-	console.log(velx +'   ' + velz);
+	var velx =  Math.sin(r) * 2000;
+	var velz = -1 * (Math.cos(r) * 2000);
 
 	var data = {
 		velx: velx,
@@ -190,7 +175,6 @@ function spawnBullet(e) {
 	entities.bulletPhysics(data, function(physics) {
 		bullet = physics;
 	});
-	console.log(bullet);
 	world.add(bullet);
 	bullets.push(bullet);
 
@@ -201,6 +185,10 @@ function spawnBullet(e) {
 	scene.add(bulletMesh);
 	bulletMeshs.push(bulletMesh);
 
+}
+
+function updatePlayerHealth() {
+	console.log(playerMesh);
 }
 
 function animate() {
@@ -219,6 +207,9 @@ function animate() {
 	}
 	if(key.isPressed("D")) {
 		player.position.z -= SPEED;
+	}
+	if(key.isPressed("1")) {
+		updatePlayerHealth();
 	}
 
 	requestAnimationFrame(animate);
@@ -243,8 +234,10 @@ function animate() {
 }
 
 function updatePhysics() {
+
 	// Step the physics world
 	world.step(timeStep);
+
 	// Copy coordinates from Cannon.js to Three.js
 	playerMesh.position.copy(player.position);
 	playerMesh.quaternion.copy(player.quaternion);
@@ -261,10 +254,6 @@ function updatePhysics() {
 
 	shieldMesh.position.copy(player.position);
 	shieldMesh.quaternion.copy(player.quaternion);
-}
-
-function randomIntFromInterval(min, max) {
-	return Math.floor(Math.random()*(max-min+1)+min);
 }
 
 function render() {
