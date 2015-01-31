@@ -1,12 +1,14 @@
 var THREE = require('three');
 var CANNON = require('cannon');
 var key = require('keymaster');
+var boids = require('boids');
 var entities = require('./entities');
 
 var shootSound, collisionSound, music;
 var world, player, bullets=[], objects=[], villagers=[], shield, timeStep=1/60;
 var camera, scene, light, webglRenderer, container;
 var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], villagerMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
+var flock;
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
@@ -45,6 +47,7 @@ initSound();
 initHTML();
 initCannon();
 initThree();
+initBoids();
 animate();
 
 function initSound () {
@@ -236,6 +239,32 @@ function initThree() {
 	window.addEventListener('resize', onWindowResize, false);
 }
 
+function initBoids() {
+	flock = boids({
+		boids: villagers.length, // The amount of boids to use
+		speedLimit: 5,           // Max steps to take per tick
+		accelerationLimit: 0.1,    // Max acceleration per tick
+		separationDistance: 10,  // Radius at which boids avoid others
+		alignmentDistance: 300,  // Radius at which boids align with others
+		choesionDistance: 1000,   // Radius at which boids approach others
+		separationForce: 0,   // Speed to avoid at
+		alignmentForce: 0.1,    // Speed to align with other boids
+		choesionForce: 0.1,     // Speed to move towards other boids
+		attractors: [
+			[-2000,-2000,2000,-10],
+			[-2000,2000,2000,-10],
+			[2000,-2000,2000,-10],
+			[2000,2000,2000,-10]
+		]
+	});
+	for (var i = 0; i < villagers.length; i++) {
+		flock.boids[i][0] = villagers[i].position.x;
+		flock.boids[i][1] = villagers[i].position.z;
+		flock.boids[i][2] = 0;
+		flock.boids[i][3] = 0;
+	}
+}
+
 function onWindowResize() {
 	windowHalfX = window.innerWidth / 2;
 	windowHalfY = window.innerHeight / 2;
@@ -347,6 +376,7 @@ function animate() {
 	}
 
 	requestAnimationFrame(animate);
+	updateAI();
 	updatePhysics();
 
 	//playerMiniMesh should match playerMesh position
@@ -399,6 +429,14 @@ function updatePhysics() {
 
 	shieldMesh.position.copy(player.position);
 	shieldMesh.quaternion.copy(player.quaternion);
+}
+
+function updateAI() {
+	flock.tick();
+	for (var i = 0; i < villagers.length; i++) {
+		villagers[i].position.x = flock.boids[i][0];
+		villagers[i].position.z = flock.boids[i][1];
+	}
 }
 
 function render() {

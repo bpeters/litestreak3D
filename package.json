@@ -9,6 +9,7 @@
   },
   "homepage": "https://github.com/bpeters/litestreak3D",
   "dependencies": {
+    "boids": "^1.0.0",
     "cannon": "^0.6.1",
     "express": "^4.11.1",
     "keymaster": "^1.6.2",

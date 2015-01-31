@@ -218,7 +218,7 @@ exports.bulletMesh = function(callback) {
 
 exports.villagerPhysics = function(callback) {
 
-	var villagerCount = randomIntFromInterval(5, 10);
+	var villagerCount = randomIntFromInterval(10, 30);
 	var villagers = [];
 
 	for (var i = 0; i < villagerCount; i++){
