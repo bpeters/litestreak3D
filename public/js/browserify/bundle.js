@@ -47,6 +47,11 @@ exports.playerPhysics = function(health, callback) {
 	player.collisionFilterMask =  GROUP3 | GROUP5;
 	player.linearDamping = 0.9;
 
+	player.addEventListener("collide",function(e){
+		//console.log("Collided with body:",e.body);
+		//console.log("Contact between bodies:",e.contact);
+	});
+
 	return callback(player);
 };
 
@@ -56,7 +61,7 @@ exports.playerMesh = function(health, callback) {
 
 	var playerGeometry = new THREE.BoxGeometry(h, h, h);
 	var playerMaterial = new THREE.MeshLambertMaterial({
-			color: 0xcccccc
+			color: 0x81B4E4
 	});
 	var playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
 	playerMesh.castShadow = true;
@@ -157,6 +162,7 @@ exports.objectMesh = function(objects, callback) {
 		var objectMesh = new THREE.Mesh(objectGeometry, objectMaterial);
 		objectMesh.receiveShadow = true;
 		objectMesh.castShadow = true;
+		objectMesh.name = i;
 		objectMeshs.push(objectMesh);
 	}
 
@@ -177,6 +183,7 @@ exports.objectMiniMesh = function(objects, callback) {
 		});
 		var objectMiniMesh = new THREE.Mesh(objectMiniGeometry, objectMiniMaterial);
 		objectMiniMesh.position.y = LEVEL + 200;
+		objectMiniMesh.name = i;
 		objectMiniMeshs.push(objectMiniMesh);
 	}
 
@@ -205,7 +212,7 @@ exports.bulletPhysics = function(data, callback) {
 	return callback(bullet);
 };
 
-exports.bulletMesh = function(callback) {
+exports.bulletMesh = function(name, callback) {
 
 	var bulletGeometry = new THREE.BoxGeometry(10, 10, 10);
 	var bulletMaterial = new THREE.MeshLambertMaterial({
@@ -213,6 +220,7 @@ exports.bulletMesh = function(callback) {
 	});
 	var bulletMesh = new THREE.Mesh(bulletGeometry, bulletMaterial);
 	bulletMesh.castShadow = true;
+	bulletMesh.name = name;
 
 	return callback(bulletMesh);
 };
@@ -240,6 +248,12 @@ exports.villagerPhysics = function(callback) {
 		villager.angularDamping = 0;
 		villager.collisionFilterGroup = GROUP5;
 		villager.collisionFilterMask =  GROUP1 | GROUP3 | GROUP4 | GROUP5;
+
+		villager.addEventListener("collide",function(e){
+			//console.log("Collided with body:",e.body);
+			//console.log("Contact between bodies:",e.contact);
+		});
+
 		villagers.push(villager);
 	}
 
@@ -259,6 +273,7 @@ exports.villagerMesh = function(villagers, callback) {
 		var villagerMesh = new THREE.Mesh(villagerGeometry, villagerMaterial);
 		villagerMesh.receiveShadow = true;
 		villagerMesh.castShadow = true;
+		villagerMesh.name = i;
 		villagerMeshs.push(villagerMesh);
 	}
 
@@ -297,6 +312,8 @@ var world, player, bullets=[], objects=[], villagers=[], shield, timeStep=1/60;
 var camera, scene, light, webglRenderer, container;
 var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], villagerMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
 var flock;
+
+var bulletToRemove = null;
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
@@ -377,16 +394,6 @@ function initCannon() {
 	});
 	world.add(player);
 
-	player.addEventListener("collide",function(e){
-		if (e.body) {
-			if(collisionSound) {
-				collisionSound.play();
-			}
-		}
-		//console.log("Collided with body:",e.body);
-		//console.log("Contact between bodies:",e.contact);
-	});
-
 	//shield physics
 	entities.shieldPhysics(SHIELD, HEALTH, function(physics) {
 		shield = physics;
@@ -418,7 +425,6 @@ function initThree() {
 
 	//Add listener for mouse click to shoot bullet
 	container.addEventListener('click', spawnBullet, false);
-	container.addEventListener('dblclick', spawnBullet, false);
 
 	//Toggle mini map.
 	key('tab', function(){
@@ -498,7 +504,7 @@ function initThree() {
 	//lights
 	light = new THREE.DirectionalLight(0xffffff, 1.75);
 	light.position.set(1, 1, 1);
-	light.castShadow = true;
+	light.castShadow = false;
 
 	light.shadowMapWidth = SCREEN_WIDTH;
 	light.shadowMapHeight = SCREEN_HEIGHT;
@@ -535,7 +541,7 @@ function initBoids() {
 		separationDistance: 10,  // Radius at which boids avoid others
 		alignmentDistance: 300,  // Radius at which boids align with others
 		choesionDistance: 1000,   // Radius at which boids approach others
-		separationForce: 0,   // Speed to avoid at
+		separationForce: 0.1,   // Speed to avoid at
 		alignmentForce: 0.1,    // Speed to align with other boids
 		choesionForce: 0.1,     // Speed to move towards other boids
 		attractors: [
@@ -543,7 +549,7 @@ function initBoids() {
 			[-2000,2000,2000,-10],
 			[2000,-2000,2000,-10],
 			[2000,2000,2000,-10]
-		]
+		] //Edge of the map to contain villagers
 	});
 	for (var i = 0; i < villagers.length; i++) {
 		flock.boids[i][0] = villagers[i].position.x;
@@ -580,7 +586,7 @@ function spawnBullet(e) {
 		velx: velx,
 		velz: velz,
 		x: player.position.x,
-		z: player.position.z,
+		z: player.position.z
 	};
 
 	//bullet physics
@@ -591,11 +597,17 @@ function spawnBullet(e) {
 	bullets.push(bullet);
 
 	//bullet mesh
-	entities.bulletMesh(function(mesh) {
+	entities.bulletMesh(bullets.length - 1, function(mesh) {
 		bulletMesh = mesh;
 	});
 	scene.add(bulletMesh);
 	bulletMeshs.push(bulletMesh);
+
+	bullet.addEventListener("collide",function(e){
+		if (e.body.collisionFilterGroup === 16) {
+			bulletToRemove = bulletMesh.name;
+		}
+	});
 
 }
 
@@ -645,6 +657,9 @@ function animate() {
 	for (var i = 0; i < villagers.length; i++) {
 		villagers[i].position.y = LEVEL;
 	}
+	for (var i = 0; i < objects.length; i++) {
+		objects[i].position.y = LEVEL;
+	}
 
 	//player input
 	if(key.isPressed("W")) {
@@ -666,22 +681,7 @@ function animate() {
 	requestAnimationFrame(animate);
 	updateAI();
 	updatePhysics();
-
-	//playerMiniMesh should match playerMesh position
-	playerMiniMesh.position.x = playerMesh.position.x + (playerMesh.position.x / 16);
-	playerMiniMesh.position.z = playerMesh.position.z  + (playerMesh.position.z / 16);
-
-	//objectMiniMesh should match objectMesh position
-	for (var i = 0; i < objectMiniMeshs.length; i++) {
-		objectMiniMeshs[i].position.x = playerMesh.position.x + (objectMeshs[i].position.x / 16);
-		objectMiniMeshs[i].position.z = playerMesh.position.z  + (objectMeshs[i].position.z / 16);
-	}
-
-	//objectMiniMesh should match objectMesh position
-	for (var i = 0; i < villagerMiniMeshs.length; i++) {
-		villagerMiniMeshs[i].position.x = playerMesh.position.x + (villagerMeshs[i].position.x / 16);
-		villagerMiniMeshs[i].position.z = playerMesh.position.z  + (villagerMeshs[i].position.z / 16);
-	}
+	removeEntities();
 
 	//camera should match playerMesh position
 	camera.position.x = CAMERA_START_X + playerMesh.position.x;
@@ -699,10 +699,14 @@ function updatePhysics() {
 	// Copy coordinates from Cannon.js to Three.js
 	playerMesh.position.copy(player.position);
 	playerMesh.quaternion.copy(player.quaternion);
+	playerMiniMesh.position.x = playerMesh.position.x + (playerMesh.position.x / 16);
+	playerMiniMesh.position.z = playerMesh.position.z  + (playerMesh.position.z / 16);
 
 	for (var i = 0; i < objectMeshs.length; i++) {
 		objectMeshs[i].position.copy(objects[i].position);
 		objectMeshs[i].quaternion.copy(objects[i].quaternion);
+		objectMiniMeshs[i].position.x = playerMesh.position.x + (objectMeshs[i].position.x / 16);
+		objectMiniMeshs[i].position.z = playerMesh.position.z  + (objectMeshs[i].position.z / 16);
 	}
 
 	for (var i = 0; i < bulletMeshs.length; i++) {
@@ -713,6 +717,8 @@ function updatePhysics() {
 	for (var i = 0; i < villagerMeshs.length; i++) {
 		villagerMeshs[i].position.copy(villagers[i].position);
 		villagerMeshs[i].quaternion.copy(villagers[i].quaternion);
+		villagerMiniMeshs[i].position.x = playerMesh.position.x + (villagerMeshs[i].position.x / 16);
+		villagerMiniMeshs[i].position.z = playerMesh.position.z  + (villagerMeshs[i].position.z / 16);
 	}
 
 	shieldMesh.position.copy(player.position);
@@ -725,6 +731,20 @@ function updateAI() {
 		villagers[i].position.x = flock.boids[i][0];
 		villagers[i].position.z = flock.boids[i][1];
 	}
+}
+
+function removeEntities() {
+	if (bulletToRemove) {
+		console.log(bulletToRemove);
+		console.log(bullets[bulletToRemove]);
+		if (bullets[bulletToRemove]) {
+			world.remove(bullets[bulletToRemove]);
+			bullets.splice(bulletToRemove, 1);
+			scene.remove(bulletMeshs[bulletToRemove]);
+			bulletMeshs.splice(bulletToRemove, 1);
+		}
+	}
+	bulletToRemove = null;
 }
 
 function render() {
@@ -8750,7 +8770,7 @@ ConvexPolyhedron.prototype.clipFaceAgainstHull = function(separatingNormal, posA
         var depth = planeNormalWS.dot(pVtxIn[i]) + planeEqWS; //???
         /*console.log("depth calc from normal=",planeNormalWS.toString()," and constant "+planeEqWS+" and vertex ",pVtxIn[i].toString()," gives "+depth);*/
         if (depth <=minDist){
-            console.log("clamped: depth="+depth+" to minDist="+(minDist+""));
+            //console.log("clamped: depth="+depth+" to minDist="+(minDist+""));
             depth = minDist;
         }
 
@@ -12616,6 +12636,7 @@ World.prototype.internalStep = function(dt){
 },{"../collision/AABB":3,"../collision/ArrayCollisionMatrix":4,"../collision/NaiveBroadphase":7,"../collision/Ray":9,"../collision/RaycastResult":10,"../equations/ContactEquation":16,"../equations/FrictionEquation":18,"../material/ContactMaterial":21,"../material/Material":22,"../math/Quaternion":25,"../math/Vec3":27,"../objects/Body":28,"../shapes/Shape":40,"../solver/GSSolver":42,"../utils/EventTarget":45,"../utils/TupleDictionary":47,"../utils/Vec3Pool":49,"./Narrowphase":50}]},{},[2])
 (2)
 });
+
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],6:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.

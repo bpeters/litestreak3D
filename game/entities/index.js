@@ -46,6 +46,11 @@ exports.playerPhysics = function(health, callback) {
 	player.collisionFilterMask =  GROUP3 | GROUP5;
 	player.linearDamping = 0.9;
 
+	player.addEventListener("collide",function(e){
+		//console.log("Collided with body:",e.body);
+		//console.log("Contact between bodies:",e.contact);
+	});
+
 	return callback(player);
 };
 
@@ -55,7 +60,7 @@ exports.playerMesh = function(health, callback) {
 
 	var playerGeometry = new THREE.BoxGeometry(h, h, h);
 	var playerMaterial = new THREE.MeshLambertMaterial({
-			color: 0xcccccc
+			color: 0x81B4E4
 	});
 	var playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
 	playerMesh.castShadow = true;
@@ -156,6 +161,7 @@ exports.objectMesh = function(objects, callback) {
 		var objectMesh = new THREE.Mesh(objectGeometry, objectMaterial);
 		objectMesh.receiveShadow = true;
 		objectMesh.castShadow = true;
+		objectMesh.name = i;
 		objectMeshs.push(objectMesh);
 	}
 
@@ -176,6 +182,7 @@ exports.objectMiniMesh = function(objects, callback) {
 		});
 		var objectMiniMesh = new THREE.Mesh(objectMiniGeometry, objectMiniMaterial);
 		objectMiniMesh.position.y = LEVEL + 200;
+		objectMiniMesh.name = i;
 		objectMiniMeshs.push(objectMiniMesh);
 	}
 
@@ -204,7 +211,7 @@ exports.bulletPhysics = function(data, callback) {
 	return callback(bullet);
 };
 
-exports.bulletMesh = function(callback) {
+exports.bulletMesh = function(name, callback) {
 
 	var bulletGeometry = new THREE.BoxGeometry(10, 10, 10);
 	var bulletMaterial = new THREE.MeshLambertMaterial({
@@ -212,6 +219,7 @@ exports.bulletMesh = function(callback) {
 	});
 	var bulletMesh = new THREE.Mesh(bulletGeometry, bulletMaterial);
 	bulletMesh.castShadow = true;
+	bulletMesh.name = name;
 
 	return callback(bulletMesh);
 };
@@ -239,6 +247,12 @@ exports.villagerPhysics = function(callback) {
 		villager.angularDamping = 0;
 		villager.collisionFilterGroup = GROUP5;
 		villager.collisionFilterMask =  GROUP1 | GROUP3 | GROUP4 | GROUP5;
+
+		villager.addEventListener("collide",function(e){
+			//console.log("Collided with body:",e.body);
+			//console.log("Contact between bodies:",e.contact);
+		});
+
 		villagers.push(villager);
 	}
 
@@ -258,6 +272,7 @@ exports.villagerMesh = function(villagers, callback) {
 		var villagerMesh = new THREE.Mesh(villagerGeometry, villagerMaterial);
 		villagerMesh.receiveShadow = true;
 		villagerMesh.castShadow = true;
+		villagerMesh.name = i;
 		villagerMeshs.push(villagerMesh);
 	}
 
