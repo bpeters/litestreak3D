@@ -2,15 +2,17 @@ var THREE = require('three');
 var CANNON = require('cannon');
 var key = require('keymaster');
 var boids = require('boids');
+var _ = require('lodash');
 var entities = require('./entities');
 
-var shootSound, collisionSound, music;
+var shootSound, hitSound, music;
 var world, player, bullets=[], objects=[], villagers=[], shield, timeStep=1/60;
 var camera, scene, light, webglRenderer, container;
 var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], villagerMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
 var flock;
 
 var bulletToRemove = null;
+var villagersHit = [];
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
@@ -24,11 +26,13 @@ var LEVEL = 500;
 var HEALTH = 30;
 var SHIELD = 60;
 var SPEED = 10;
+var DMG = 5;
 var CREDITS = 100;
 
 var NEW_HEALTH = HEALTH;
 var NEW_SHIELD = SHIELD;
 var NEW_SPEED = SPEED;
+var NEW_DMG = DMG;
 var NEW_CREDITS = CREDITS;
 
 var windowHalfX = window.innerWidth / 2;
@@ -42,7 +46,7 @@ var sounds = [
 	{src:"music.mp3", id:"music"},
 	{src:"music2.mp3", id:"music2"},
 	{src:"shoot.wav", id:"shoot"},
-	{src:"collision.wav", id:"collision"}
+	{src:"hit.wav", id:"hit"}
 ];
 
 initSound();
@@ -50,6 +54,7 @@ initHTML();
 initCannon();
 initThree();
 initBoids();
+initEvents();
 animate();
 
 function initSound () {
@@ -57,7 +62,7 @@ function initSound () {
 	setTimeout(function(){
 		//music = createjs.Sound.play("music2", {loop: -1});
 		shootSound = createjs.Sound.createInstance("shoot");
-		collisionSound = createjs.Sound.createInstance("collision");
+		hitSound = createjs.Sound.createInstance("hit");
 	}, 3000);
 	document.getElementById('music').onclick = function () {
 		if (toggleSoundOn && music) {
@@ -76,6 +81,7 @@ function initHTML() {
 	document.getElementById("health").innerHTML = NEW_HEALTH;
 	document.getElementById("shield").innerHTML = NEW_SHIELD;
 	document.getElementById("speed").innerHTML = NEW_SPEED;
+	document.getElementById("dmg").innerHTML = NEW_DMG;
 	document.getElementById("credits").innerHTML = NEW_CREDITS;
 }
 
@@ -256,6 +262,12 @@ function initBoids() {
 	}
 }
 
+function initEvents() {
+	for (var i = 0; i < villagers.length; i++) {
+		villagers[i].addEventListener("collide", villagerGotHit);
+	}
+}
+
 function onWindowResize() {
 	windowHalfX = window.innerWidth / 2;
 	windowHalfY = window.innerHeight / 2;
@@ -283,7 +295,9 @@ function spawnBullet(e) {
 		velx: velx,
 		velz: velz,
 		x: player.position.x,
-		z: player.position.z
+		z: player.position.z,
+		m: NEW_DMG,
+		name: bullets.length - 1
 	};
 
 	//bullet physics
@@ -294,7 +308,7 @@ function spawnBullet(e) {
 	bullets.push(bullet);
 
 	//bullet mesh
-	entities.bulletMesh(bullets.length - 1, function(mesh) {
+	entities.bulletMesh(data, function(mesh) {
 		bulletMesh = mesh;
 	});
 	scene.add(bulletMesh);
@@ -378,6 +392,7 @@ function animate() {
 	requestAnimationFrame(animate);
 	updateAI();
 	updatePhysics();
+	handleHits();
 	removeEntities();
 
 	//camera should match playerMesh position
@@ -430,10 +445,23 @@ function updateAI() {
 	}
 }
 
+function villagerGotHit(e) {
+	if (e.body.collisionFilterGroup === 8) {
+		if(hitSound) {
+			hitSound.play();
+		}
+		var villagerIds = _.pluck(villagersHit, 'id');
+		if (villagerIds.indexOf(e.contact.bi.id) === -1) {
+			villagersHit.push({
+				id: e.contact.bi.id,
+				dmg: e.body.mass
+			});
+		}
+	}
+}
+
 function removeEntities() {
 	if (bulletToRemove) {
-		console.log(bulletToRemove);
-		console.log(bullets[bulletToRemove]);
 		if (bullets[bulletToRemove]) {
 			world.remove(bullets[bulletToRemove]);
 			bullets.splice(bulletToRemove, 1);
@@ -442,6 +470,26 @@ function removeEntities() {
 		}
 	}
 	bulletToRemove = null;
+}
+
+function handleHits() {
+	if (villagersHit) {
+		for (var i = 0; i < villagers.length; i++) {
+			for (var v = 0; v < villagersHit.length; v++) {
+				if (villagers[i].id === villagersHit[v].id) {
+					var m = villagers[i].mass - villagersHit[v].dmg;
+					var h = m + 20;
+					var mini = h /16;
+					villagers[i].shapes[0] = new CANNON.Box(new CANNON.Vec3(m, m, m));
+					villagers[i].mass = m;
+					villagers[i].updateMassProperties();
+					villagerMeshs[i].geometry = new THREE.BoxGeometry(h, h, h);
+					villagerMiniMeshs[i].geometry = new THREE.BoxGeometry(mini, mini, mini);
+				}
+			}
+		}
+	}
+	villagersHit = [];
 }
 
 function render() {

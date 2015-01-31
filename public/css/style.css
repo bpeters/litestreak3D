@@ -28,8 +28,12 @@
   top: 140px;
   left: 20px;
 }
-#credits {
+#dmg {
   top: 180px;
+  left: 20px;
+}
+#credits {
+  top: 220px;
   left: 20px;
 }
 

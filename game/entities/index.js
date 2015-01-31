@@ -191,10 +191,12 @@ exports.objectMiniMesh = function(objects, callback) {
 
 exports.bulletPhysics = function(data, callback) {
 
-	var bulletShape = new CANNON.Box(new CANNON.Vec3(5,5,5));
+	var m = data.m;
+
+	var bulletShape = new CANNON.Box(new CANNON.Vec3(m,m,m));
 
 	var bullet = new CANNON.Body({
-		mass: 100
+		mass: m
 	});
 	bullet.addShape(bulletShape);
 	bullet.position.x = data.x;
@@ -211,15 +213,17 @@ exports.bulletPhysics = function(data, callback) {
 	return callback(bullet);
 };
 
-exports.bulletMesh = function(name, callback) {
+exports.bulletMesh = function(data, callback) {
 
-	var bulletGeometry = new THREE.BoxGeometry(10, 10, 10);
+	var m = data.m + 5;
+
+	var bulletGeometry = new THREE.BoxGeometry(m, m, m);
 	var bulletMaterial = new THREE.MeshLambertMaterial({
 			color: 0xcccccc
 	});
 	var bulletMesh = new THREE.Mesh(bulletGeometry, bulletMaterial);
 	bulletMesh.castShadow = true;
-	bulletMesh.name = name;
+	bulletMesh.name = data.name;
 
 	return callback(bulletMesh);
 };
@@ -247,11 +251,6 @@ exports.villagerPhysics = function(callback) {
 		villager.angularDamping = 0;
 		villager.collisionFilterGroup = GROUP5;
 		villager.collisionFilterMask =  GROUP1 | GROUP3 | GROUP4 | GROUP5;
-
-		villager.addEventListener("collide",function(e){
-			//console.log("Collided with body:",e.body);
-			//console.log("Contact between bodies:",e.contact);
-		});
 
 		villagers.push(villager);
 	}
