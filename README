@@ -2,11 +2,120 @@ npm install
 grunt
 grunt watch
 
-TODO
+Controller
 
-1. Prepare for heroku
-2. Add player bullet
-3. player stats tied to physics/object
-4. object destruction
-5. granular objects
+	  W
+	A S D	Movement
+
+	tab		Toggle Minimap
+
+	Mouse1	Shoot Weapon
+
+	1		Increase Health
+	2		Increase Shield
+	3		Increase Speed
+
+AI
+
+	Villager
+
+		Shape: block
+		Color: cyan
+		Size/Health/Mass: 30 - 60
+		Speed: 5
+		LinearDamping: .5
+		Shield: None
+
+		Needs:
+
+			Find other villagers. 
+			If two are together keep looking. 
+			If three find each other start to tribal dance.
+			If others join, add them to the dance.
+			Once tribal dance is complete, based on the number of villagers, all villagers sacrifice themselves.
+			This spawns a demi-god.
+
+		Reactions:
+
+			If villager is attacked, villager turns into hunter.
+			If villager is attacked during tribal dance, all villagers turn into hunters.
+
+		Actions:
+
+			Villager can move.
+			Villager can tribal dance.
+			Villager can turn into hunter.
+			> 3 villagers can spawn demi-god.
+
+		Weapon:
+
+			None.
+
+	Hunter
+
+		Shape: block
+		Color: red
+		Size/Health/Mass: 30 - 60
+		Speed: 5 - 10
+		LinearDamping: .5
+		Shield: None
+
+		Needs:
+
+			Find player and attack.
+			If can't find player (and hasn't shoot at them) turn into villager.
+
+		Reactions:
+
+			No reactions.
+
+		Actions:
+
+			Hunter can shoot.
+			Hunter can move.
+			Hunter can turn into villager.
+
+		Weapon:
+
+			Type: spear
+			Speed: 2000
+			Recharge: 10
+			LinearDamping: .8
+			Damage/Size/Mass: 10
+
+
+	Demi-God-Gold
+
+		Shape: block
+		Color: gold
+		Size/Health/Mass: sum(total villager mass)
+		Speed: 1
+		LinearDamping: .9
+		Shield: 10 * villager count
+
+		Needs:
+
+			Find objects between 30 and 60 mass.
+			Turn them into villagers.
+
+		Actions:
+
+			DGG can shoot.
+			DGG can move.
+			DGG can convert objects into villagers.
+
+		Weapon:
+
+			Type: ray
+			Speed: 4000
+			Recharge: 30
+			LinearDamping: .01
+			Damge/Size/Mass: 5
+
+
+
+
+
+
+
 
