@@ -4,9 +4,9 @@ var key = require('keymaster');
 var entities = require('./entities');
 
 var shootSound, collisionSound, music;
-var world, player, bullets=[], objects=[], shield, timeStep=1/60;
+var world, player, bullets=[], objects=[], villagers=[], shield, timeStep=1/60;
 var camera, scene, light, webglRenderer, container;
-var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
+var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], villagerMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
@@ -50,7 +50,7 @@ animate();
 function initSound () {
 	createjs.Sound.registerSounds(sounds, "assets/");
 	setTimeout(function(){
-		music = createjs.Sound.play("music2", {loop: -1});
+		//music = createjs.Sound.play("music2", {loop: -1});
 		shootSound = createjs.Sound.createInstance("shoot");
 		collisionSound = createjs.Sound.createInstance("collision");
 	}, 3000);
@@ -92,8 +92,8 @@ function initCannon() {
 				collisionSound.play();
 			}
 		}
-		console.log("Collided with body:",e.body);
-		console.log("Contact between bodies:",e.contact);
+		//console.log("Collided with body:",e.body);
+		//console.log("Contact between bodies:",e.contact);
 	});
 
 	//shield physics
@@ -109,6 +109,15 @@ function initCannon() {
 	for (var i = 0; i < objects.length; i++){
 		world.add(objects[i]);
 	}
+
+	//villager physics
+	entities.villagerPhysics(function(physics) {
+		villagers = physics;
+	});
+	for (var i = 0; i < villagers.length; i++){
+		world.add(villagers[i]);
+	}
+
 }
 
 function initThree() {
@@ -177,6 +186,22 @@ function initThree() {
 	});
 	for (var i = 0; i < objectMiniMeshs.length; i++){
 		scene.add(objectMiniMeshs[i]);
+	}
+
+	//villagerMesh
+	entities.villagerMesh(villagers, function(mesh) {
+		villagerMeshs = mesh;
+	});
+	for (var i = 0; i < villagerMeshs.length; i++){
+		scene.add(villagerMeshs[i]);
+	}
+
+	//villagerMiniMesh
+	entities.villagerMiniMesh(villagers, function(mesh) {
+		villagerMiniMeshs = mesh;
+	});
+	for (var i = 0; i < villagerMiniMeshs.length; i++){
+		scene.add(villagerMiniMeshs[i]);
 	}
 
 	//lights
@@ -263,11 +288,17 @@ function toggleMiniMap() {
 		for (var i = 0; i < objectMiniMeshs.length; i++) {
 			objectMiniMeshs[i].material.opacity = 0;
 		}
+		for (var i = 0; i < villagerMiniMeshs.length; i++) {
+			villagerMiniMeshs[i].material.opacity = 0;
+		}
 		toggleMapOn = false;
 	} else {
 		playerMiniMesh.material.opacity = 0.9;
 		for (var i = 0; i < objectMiniMeshs.length; i++) {
 			objectMiniMeshs[i].material.opacity = 0.3;
+		}
+		for (var i = 0; i < villagerMiniMeshs.length; i++) {
+			villagerMiniMeshs[i].material.opacity = 0.9;
 		}
 		toggleMapOn = true;
 	}
@@ -292,7 +323,11 @@ function updatePlayerHealth() {
 
 function animate() {
 
+	//Keep player and villagers level
 	player.position.y = LEVEL;
+	for (var i = 0; i < villagers.length; i++) {
+		villagers[i].position.y = LEVEL;
+	}
 
 	//player input
 	if(key.isPressed("W")) {
@@ -324,6 +359,12 @@ function animate() {
 		objectMiniMeshs[i].position.z = playerMesh.position.z  + (objectMeshs[i].position.z / 16);
 	}
 
+	//objectMiniMesh should match objectMesh position
+	for (var i = 0; i < villagerMiniMeshs.length; i++) {
+		villagerMiniMeshs[i].position.x = playerMesh.position.x + (villagerMeshs[i].position.x / 16);
+		villagerMiniMeshs[i].position.z = playerMesh.position.z  + (villagerMeshs[i].position.z / 16);
+	}
+
 	//camera should match playerMesh position
 	camera.position.x = CAMERA_START_X + playerMesh.position.x;
 	camera.position.z = CAMERA_START_Z + playerMesh.position.z;
@@ -349,6 +390,11 @@ function updatePhysics() {
 	for (var i = 0; i < bulletMeshs.length; i++) {
 		bulletMeshs[i].position.copy(bullets[i].position);
 		bulletMeshs[i].quaternion.copy(bullets[i].quaternion);
+	}
+
+	for (var i = 0; i < villagerMeshs.length; i++) {
+		villagerMeshs[i].position.copy(villagers[i].position);
+		villagerMeshs[i].quaternion.copy(villagers[i].quaternion);
 	}
 
 	shieldMesh.position.copy(player.position);

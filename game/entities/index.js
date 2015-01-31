@@ -6,6 +6,7 @@ var GROUP1 = 1; //player
 var GROUP2 = 2; //shield
 var GROUP3 = 4; //object
 var GROUP4 = 8; //bullet
+var GROUP5 = 16; //villager
 
 var LEVEL = 500;
 
@@ -42,7 +43,7 @@ exports.playerPhysics = function(health, callback) {
 	player.position.y = LEVEL;
 	player.position.z = 0;
 	player.collisionFilterGroup = GROUP1;
-	player.collisionFilterMask =  GROUP3;
+	player.collisionFilterMask =  GROUP3 | GROUP5;
 	player.linearDamping = 0.9;
 
 	return callback(player);
@@ -135,7 +136,7 @@ exports.objectPhysics = function(callback) {
 		object.quaternion.x = randomIntFromInterval(0, 1);
 		object.linearDamping = randomIntFromInterval(0.01, 0.9);
 		object.collisionFilterGroup = GROUP3;
-		object.collisionFilterMask =  GROUP1 | GROUP3 | GROUP4;
+		object.collisionFilterMask =  GROUP1 | GROUP3 | GROUP4 | GROUP5;
 		objects.push(object);
 	}
 
@@ -147,7 +148,7 @@ exports.objectMesh = function(objects, callback) {
 	var objectMeshs = [];
 
 	for (var i = 0; i < objects.length; i++) {
-		var m = objects[i].mass;
+		var m = objects[i].mass + 20;
 		var objectGeometry = new THREE.BoxGeometry(m, m, m);
 		var objectMaterial = new THREE.MeshPhongMaterial({
 			color: 0xaaaaaa
@@ -197,7 +198,7 @@ exports.bulletPhysics = function(data, callback) {
 	bullet.velocity.x = data.velx;
 	bullet.velocity.z = data.velz;
 	bullet.collisionFilterGroup = GROUP4;
-	bullet.collisionFilterMask =  GROUP3 | GROUP4;
+	bullet.collisionFilterMask =  GROUP3 | GROUP4 | GROUP5;
 	bullet.linearDamping = 0.5;
 
 	return callback(bullet);
@@ -213,4 +214,72 @@ exports.bulletMesh = function(callback) {
 	bulletMesh.castShadow = true;
 
 	return callback(bulletMesh);
+};
+
+exports.villagerPhysics = function(callback) {
+
+	var villagerCount = randomIntFromInterval(5, 10);
+	var villagers = [];
+
+	for (var i = 0; i < villagerCount; i++){
+		var mass = randomIntFromInterval(30, 60);
+		var villagerShape = new CANNON.Box(new CANNON.Vec3(mass,mass,mass));
+		var villager = new CANNON.Body({
+			mass: mass
+		});
+		villager.addShape(villagerShape);
+		var randomX = randomIntFromInterval(-2000, 2000);
+		var randomZ = randomIntFromInterval(-2000, 2000);
+		var spin = randomIntFromInterval(1, 3);
+		villager.position.x = randomX;
+		villager.position.y = LEVEL;
+		villager.position.z = randomZ;
+		villager.linearDamping = 0.5;
+		villager.angularVelocity.set(1,spin,1);
+		villager.angularDamping = 0;
+		villager.collisionFilterGroup = GROUP5;
+		villager.collisionFilterMask =  GROUP1 | GROUP3 | GROUP4 | GROUP5;
+		villagers.push(villager);
+	}
+
+	return callback(villagers);
+};
+
+exports.villagerMesh = function(villagers, callback) {
+
+	var villagerMeshs = [];
+
+	for (var i = 0; i < villagers.length; i++) {
+		var m = villagers[i].mass + 20;
+		var villagerGeometry = new THREE.BoxGeometry(m, m, m);
+		var villagerMaterial = new THREE.MeshPhongMaterial({
+			color: 0x81B4E4
+		});
+		var villagerMesh = new THREE.Mesh(villagerGeometry, villagerMaterial);
+		villagerMesh.receiveShadow = true;
+		villagerMesh.castShadow = true;
+		villagerMeshs.push(villagerMesh);
+	}
+
+	return callback(villagerMeshs);
+};
+
+exports.villagerMiniMesh = function(villagers, callback) {
+
+	var villagerMiniMeshs = [];
+
+	for (var i = 0; i < villagers.length; i++) {
+		var m = villagers[i].mass / 16;
+		var villagerMiniGeometry = new THREE.BoxGeometry(m, m, m);
+		var villagerMiniMaterial = new THREE.MeshLambertMaterial({
+			color: 0x81B4E4,
+			transparent: true,
+			opacity: 0.9
+		});
+		var villagerMiniMesh = new THREE.Mesh(villagerMiniGeometry, villagerMiniMaterial);
+		villagerMiniMesh.position.y = LEVEL + 200;
+		villagerMiniMeshs.push(villagerMiniMesh);
+	}
+
+	return callback(villagerMiniMeshs);
 };
