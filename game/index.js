@@ -229,6 +229,25 @@ function initBoids() {
 		villagerFlock.boids[i][2] = 0;
 		villagerFlock.boids[i][3] = 0;
 	}
+
+	hunterFlock = boids({
+		boids: 0, // The amount of boids to use
+		speedLimit: 10,           // Max steps to take per tick
+		accelerationLimit: 0.1,    // Max acceleration per tick
+		separationDistance: 100,  // Radius at which boids avoid others
+		alignmentDistance: 300,  // Radius at which boids align with others
+		choesionDistance: 1000,   // Radius at which boids approach others
+		separationForce: 0.1,   // Speed to avoid at
+		alignmentForce: 0.1,    // Speed to align with other boids
+		choesionForce: 0.1,     // Speed to move towards other boids
+		attractors: [
+			[0,0,1000,10], //player attractor
+			[-4000,-4000,4000,-10],
+			[-4000,4000,4000,-10],
+			[4000,-4000,4000,-10],
+			[4000,4000,4000,-10]
+		] //Edge of the map to contain villagers
+	});
 }
 
 function initEvents() {
@@ -430,10 +449,17 @@ function updatePhysics() {
 
 function updateAI() {
 	villagerFlock.tick();
+	hunterFlock.tick();
 	for (var i = 0; i < villagers.length; i++) {
 		villagers[i].position.x = villagerFlock.boids[i][0];
 		villagers[i].position.z = villagerFlock.boids[i][1];
 	}
+	for (var i = 0; i < hunters.length; i++) {
+		hunters[i].position.x = hunterFlock.boids[i][0];
+		hunters[i].position.z = hunterFlock.boids[i][1];
+	}
+	hunterFlock.attractors[0][0] = player.position.x;
+	hunterFlock.attractors[0][1] = player.position.z;
 }
 
 function villagerGotHit(e) {
@@ -507,7 +533,8 @@ function spawnEntities() {
 			scene.add(hunterMiniMesh);
 			hunterMiniMeshs.push(hunterMiniMesh);
 
-			//hunterFlock.boids.push();
+			hunterFlock.boids.push([hunter.position.x, hunter.position.z, hunter.velocity.x, hunter.velocity.z, 0, 0]);
+			console.log(hunterFlock);
 		}
 	}
 	villagersToHunters = [];
