@@ -11,7 +11,8 @@ var camera, scene, light, webglRenderer, container;
 var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], villagerMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
 var flock;
 
-var bulletToRemove = null;
+var bulletsToRemove = [];
+var villagersToRemove = [];
 var villagersHit = [];
 
 var SCREEN_WIDTH = window.innerWidth;
@@ -316,7 +317,9 @@ function spawnBullet(e) {
 
 	bullet.addEventListener("collide",function(e){
 		if (e.body.collisionFilterGroup === 16) {
-			bulletToRemove = bulletMesh.name;
+			if (bulletsToRemove.indexOf(bulletMesh.name) === -1) {
+				bulletsToRemove.push(bulletMesh.name);
+			}
 		}
 	});
 
@@ -446,7 +449,8 @@ function updateAI() {
 }
 
 function villagerGotHit(e) {
-	if (e.body.collisionFilterGroup === 8) {
+	var v = Math.max(Math.abs(e.body.velocity.x), Math.abs(e.body.velocity.z));
+	if (e.body.collisionFilterGroup === 8 && v > 1) {
 		if(hitSound) {
 			hitSound.play();
 		}
@@ -461,15 +465,32 @@ function villagerGotHit(e) {
 }
 
 function removeEntities() {
-	if (bulletToRemove) {
-		if (bullets[bulletToRemove]) {
-			world.remove(bullets[bulletToRemove]);
-			bullets.splice(bulletToRemove, 1);
-			scene.remove(bulletMeshs[bulletToRemove]);
-			bulletMeshs.splice(bulletToRemove, 1);
+	if (bulletsToRemove) {
+		for (var i = 0; i < bulletsToRemove.length; i++) {
+			if (bullets[bulletsToRemove[i]]) {
+				world.remove(bullets[bulletsToRemove[i]]);
+				bullets.splice(bulletsToRemove[i], 1);
+				scene.remove(bulletMeshs[bulletsToRemove[i]]);
+				bulletMeshs.splice(bulletsToRemove[i], 1);
+			}
 		}
 	}
-	bulletToRemove = null;
+	if (villagersToRemove) {
+		for (var i = 0; i < villagersToRemove.length; i++) {
+			if (villagers[villagersToRemove[i]]) {
+				world.remove(villagers[villagersToRemove[i]]);
+				villagers.splice(villagersToRemove[i], 1);
+				scene.remove(villagerMeshs[villagersToRemove[i]]);
+				villagerMeshs.splice(villagersToRemove[i], 1);
+				scene.remove(villagerMiniMeshs[villagersToRemove[i]]);
+				villagerMiniMeshs.splice(villagersToRemove[i], 1);
+
+				flock.boids.splice(villagersToRemove[i], 1);
+			}
+		}
+	}
+	bulletsToRemove = [];
+	villagersToRemove = [];
 }
 
 function handleHits() {
@@ -477,14 +498,21 @@ function handleHits() {
 		for (var i = 0; i < villagers.length; i++) {
 			for (var v = 0; v < villagersHit.length; v++) {
 				if (villagers[i].id === villagersHit[v].id) {
-					var m = villagers[i].mass - villagersHit[v].dmg;
-					var h = m + 20;
-					var mini = h /16;
-					villagers[i].shapes[0] = new CANNON.Box(new CANNON.Vec3(m, m, m));
-					villagers[i].mass = m;
-					villagers[i].updateMassProperties();
-					villagerMeshs[i].geometry = new THREE.BoxGeometry(h, h, h);
-					villagerMiniMeshs[i].geometry = new THREE.BoxGeometry(mini, mini, mini);
+					if (villagers[i].mass - villagersHit[v].dmg > 10) {
+						var m = villagers[i].mass - villagersHit[v].dmg;
+						var h = m + 20;
+						var mini = h /16;
+						villagers[i].shapes[0] = new CANNON.Box(new CANNON.Vec3(m, m, m));
+						villagers[i].mass = m;
+						villagers[i].updateMassProperties();
+						villagerMeshs[i].geometry = new THREE.BoxGeometry(h, h, h);
+						villagerMiniMeshs[i].geometry = new THREE.BoxGeometry(mini, mini, mini);
+					} else {
+						console.log(i);
+						if (villagersToRemove.indexOf(i) === -1) {
+							villagersToRemove.push(i);
+						}
+					}
 				}
 			}
 		}
