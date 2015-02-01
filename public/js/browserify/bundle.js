@@ -3,11 +3,12 @@ var THREE = require('three');
 var CANNON = require('cannon');
 
 // Collision filter groups - must be powers of 2!
-var GROUP1 = 1; //player
-var GROUP2 = 2; //shield
-var GROUP3 = 4; //object
-var GROUP4 = 8; //bullet
-var GROUP5 = 16; //villager
+var PLAYER = 1; //player
+var SHIELD = 2; //shield
+var OBJECT = 4; //object
+var BULLET = 8; //bullet
+var VILLAGER = 16; //villager
+var HUNTER = 32; //hunter
 
 var LEVEL = 500;
 
@@ -15,7 +16,7 @@ function randomIntFromInterval(min, max) {
 	return Math.floor(Math.random()*(max-min+1)+min);
 }
 
-exports.groundMesh = function(callback) {
+exports.groundMesh = function() {
 
 	var groundGeometry = new THREE.PlaneBufferGeometry(10000, 10000);
 	var groundMaterial = new THREE.MeshPhongMaterial({
@@ -27,10 +28,10 @@ exports.groundMesh = function(callback) {
 	groundMesh.position.y = 0;
 	groundMesh.position.z = 0;
 
-	return callback(groundMesh);
+	return groundMesh;
 };
 
-exports.playerPhysics = function(health, callback) {
+exports.playerPhysics = function(health) {
 
 	var playerShape = new CANNON.Box(new CANNON.Vec3(health, health, health));
 
@@ -43,8 +44,8 @@ exports.playerPhysics = function(health, callback) {
 	player.position.x = 0;
 	player.position.y = LEVEL;
 	player.position.z = 0;
-	player.collisionFilterGroup = GROUP1;
-	player.collisionFilterMask =  GROUP3 | GROUP5;
+	player.collisionFilterGroup = PLAYER;
+	player.collisionFilterMask =  OBJECT | VILLAGER | HUNTER;
 	player.linearDamping = 0.9;
 
 	player.addEventListener("collide",function(e){
@@ -52,10 +53,10 @@ exports.playerPhysics = function(health, callback) {
 		//console.log("Contact between bodies:",e.contact);
 	});
 
-	return callback(player);
+	return player;
 };
 
-exports.playerMesh = function(health, callback) {
+exports.playerMesh = function(health) {
 
 	var h = health + 20;
 
@@ -66,10 +67,10 @@ exports.playerMesh = function(health, callback) {
 	var playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
 	playerMesh.castShadow = true;
 
-	return callback(playerMesh);
+	return playerMesh;
 };
 
-exports.playerMiniMesh = function(health, callback) {
+exports.playerMiniMesh = function(health) {
 
 	var h = health / 16;
 
@@ -82,10 +83,10 @@ exports.playerMiniMesh = function(health, callback) {
 	var playerMiniMesh = new THREE.Mesh(playerMiniGeometry, playerMiniMaterial);
 	playerMiniMesh.position.y = LEVEL + 200;
 
-	return callback(playerMiniMesh);
+	return playerMiniMesh;
 };
 
-exports.shieldPhysics = function(shield, health, callback) {
+exports.shieldPhysics = function(shield, health) {
 
 	var s = shield + health;
 
@@ -100,13 +101,13 @@ exports.shieldPhysics = function(shield, health, callback) {
 	shield.position.x = 0;
 	shield.position.y = LEVEL;
 	shield.position.z = 0;
-	shield.collisionFilterGroup = GROUP2;
-	shield.collisionFilterMask =  GROUP4;
+	shield.collisionFilterGroup = SHIELD;
+	shield.collisionFilterMask = BULLET;
 
-	return callback(shield);
+	return shield;
 };
 
-exports.shieldMesh = function(shield, health, callback) {
+exports.shieldMesh = function(shield, health) {
 
 	var s = shield + health;
 
@@ -118,10 +119,10 @@ exports.shieldMesh = function(shield, health, callback) {
 	});
 	var shieldMesh = new THREE.Mesh(shieldGeometry, shieldMaterial);
 
-	return callback(shieldMesh);
+	return shieldMesh;
 };
 
-exports.objectPhysics = function(callback) {
+exports.objectPhysics = function() {
 
 	var objectCount = randomIntFromInterval(1, 100);
 	var objects = [];
@@ -141,15 +142,15 @@ exports.objectPhysics = function(callback) {
 		object.quaternion.y = randomIntFromInterval(0, 1);
 		object.quaternion.x = randomIntFromInterval(0, 1);
 		object.linearDamping = randomIntFromInterval(0.01, 0.9);
-		object.collisionFilterGroup = GROUP3;
-		object.collisionFilterMask =  GROUP1 | GROUP3 | GROUP4 | GROUP5;
+		object.collisionFilterGroup = OBJECT;
+		object.collisionFilterMask =  PLAYER | OBJECT | BULLET | VILLAGER | HUNTER;
 		objects.push(object);
 	}
 
-	return callback(objects);
+	return objects;
 };
 
-exports.objectMesh = function(objects, callback) {
+exports.objectMesh = function(objects) {
 
 	var objectMeshs = [];
 
@@ -166,10 +167,10 @@ exports.objectMesh = function(objects, callback) {
 		objectMeshs.push(objectMesh);
 	}
 
-	return callback(objectMeshs);
+	return objectMeshs;
 };
 
-exports.objectMiniMesh = function(objects, callback) {
+exports.objectMiniMesh = function(objects) {
 
 	var objectMiniMeshs = [];
 
@@ -187,10 +188,10 @@ exports.objectMiniMesh = function(objects, callback) {
 		objectMiniMeshs.push(objectMiniMesh);
 	}
 
-	return callback(objectMiniMeshs);
+	return objectMiniMeshs;
 };
 
-exports.bulletPhysics = function(data, callback) {
+exports.bulletPhysics = function(data) {
 
 	var m = data.m;
 
@@ -207,14 +208,14 @@ exports.bulletPhysics = function(data, callback) {
 	bullet.angularDamping = 0.5;
 	bullet.velocity.x = data.velx;
 	bullet.velocity.z = data.velz;
-	bullet.collisionFilterGroup = GROUP4;
-	bullet.collisionFilterMask =  GROUP3 | GROUP4 | GROUP5;
+	bullet.collisionFilterGroup = BULLET;
+	bullet.collisionFilterMask =  OBJECT | BULLET | VILLAGER | HUNTER;
 	bullet.linearDamping = 0.5;
 
-	return callback(bullet);
+	return bullet;
 };
 
-exports.bulletMesh = function(data, callback) {
+exports.bulletMesh = function(data) {
 
 	var m = data.m + 5;
 
@@ -226,10 +227,10 @@ exports.bulletMesh = function(data, callback) {
 	bulletMesh.castShadow = true;
 	bulletMesh.name = data.name;
 
-	return callback(bulletMesh);
+	return bulletMesh;
 };
 
-exports.villagerPhysics = function(callback) {
+exports.villagerPhysics = function() {
 
 	var villagerCount = randomIntFromInterval(10, 30);
 	var villagers = [];
@@ -250,16 +251,16 @@ exports.villagerPhysics = function(callback) {
 		villager.linearDamping = 0.5;
 		villager.angularVelocity.set(1,spin,1);
 		villager.angularDamping = 0;
-		villager.collisionFilterGroup = GROUP5;
-		villager.collisionFilterMask =  GROUP1 | GROUP3 | GROUP4 | GROUP5;
+		villager.collisionFilterGroup = VILLAGER;
+		villager.collisionFilterMask =  PLAYER | OBJECT | BULLET | VILLAGER | HUNTER;
 
 		villagers.push(villager);
 	}
 
-	return callback(villagers);
+	return villagers;
 };
 
-exports.villagerMesh = function(villagers, callback) {
+exports.villagerMesh = function(villagers) {
 
 	var villagerMeshs = [];
 
@@ -276,10 +277,10 @@ exports.villagerMesh = function(villagers, callback) {
 		villagerMeshs.push(villagerMesh);
 	}
 
-	return callback(villagerMeshs);
+	return villagerMeshs;
 };
 
-exports.villagerMiniMesh = function(villagers, callback) {
+exports.villagerMiniMesh = function(villagers) {
 
 	var villagerMiniMeshs = [];
 
@@ -296,7 +297,68 @@ exports.villagerMiniMesh = function(villagers, callback) {
 		villagerMiniMeshs.push(villagerMiniMesh);
 	}
 
-	return callback(villagerMiniMeshs);
+	return villagerMiniMeshs;
+};
+
+exports.hunterPhysics = function(data) {
+
+	var m = data.m;
+
+	var hunterShape = new CANNON.Box(new CANNON.Vec3(m,m,m));
+
+	var hunter = new CANNON.Body({
+		mass: m
+	});
+	hunter.addShape(hunterShape);
+	hunter.position.x = data.x;
+	hunter.position.y = LEVEL;
+	hunter.position.z = data.z;
+	hunter.linearDamping = 0.5;
+	hunter.angularVelocity.x = data.aX;
+	hunter.angularVelocity.y = data.aY;
+	hunter.angularVelocity.z = data.aZ;
+	hunter.angularDamping = 0;
+	hunter.collisionFilterGroup = HUNTER;
+	hunter.collisionFilterMask =  PLAYER | OBJECT | BULLET | VILLAGER | HUNTER;
+	hunter.linearDamping = 0.5;
+
+	return hunter;
+};
+
+exports.hunterMesh = function(data) {
+
+	var m = data.m + 20;
+
+	var hunterGeometry = new THREE.BoxGeometry(m, m, m);
+	var hunterMaterial = new THREE.MeshLambertMaterial({
+			color: 0xDE3E5B,
+			transparent: true,
+			opacity: 0.9
+	});
+	var hunterMesh = new THREE.Mesh(hunterGeometry, hunterMaterial);
+	hunterMesh.receiveShadow = true;
+	hunterMesh.castShadow = true;
+	hunterMesh.position.x = data.x;
+	hunterMesh.position.y = LEVEL;
+	hunterMesh.position.z = data.z;
+	hunterMesh.name = data.name;
+
+	return hunterMesh;
+};
+
+exports.hunterMiniMesh = function(data) {
+
+		var m = data.m / 16;
+		var hunterMiniGeometry = new THREE.BoxGeometry(m, m, m);
+		var hunterMiniMaterial = new THREE.MeshLambertMaterial({
+			color: 0xDE3E5B,
+			transparent: true,
+			opacity: 0.9
+		});
+		var hunterMiniMesh = new THREE.Mesh(hunterMiniGeometry, hunterMiniMaterial);
+		hunterMiniMesh.position.y = LEVEL + 200;
+
+	return hunterMiniMesh;
 };
 
 },{"cannon":5,"three":9}],2:[function(require,module,exports){
@@ -311,11 +373,12 @@ var shootSound, hitSound, music;
 var world, player, bullets=[], objects=[], villagers=[], shield, timeStep=1/60;
 var camera, scene, light, webglRenderer, container;
 var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], villagerMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
-var flock;
+var hunters=[], hunterMeshs=[], hunterMiniMeshs=[];
+var villagerFlock, hunterFlock;
 
-var bulletsToRemove = [];
-var villagersToRemove = [];
+var bulletsToRemove = [], villagersToRemove = [];
 var villagersHit = [];
+var villagersToHunters = [];
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
@@ -353,7 +416,6 @@ var sounds = [
 ];
 
 initSound();
-initHTML();
 initCannon();
 initThree();
 initBoids();
@@ -380,14 +442,6 @@ function initSound () {
 	};
 }
 
-function initHTML() {
-	document.getElementById("health").innerHTML = NEW_HEALTH;
-	document.getElementById("shield").innerHTML = NEW_SHIELD;
-	document.getElementById("speed").innerHTML = NEW_SPEED;
-	document.getElementById("dmg").innerHTML = NEW_DMG;
-	document.getElementById("credits").innerHTML = NEW_CREDITS;
-}
-
 function initCannon() {
 	world = new CANNON.World();
 	world.gravity.set(0,0,0);
@@ -395,29 +449,21 @@ function initCannon() {
 	world.solver.iterations = 10;
 
 	//player physics
-	entities.playerPhysics(HEALTH, function(physics) {
-		player = physics;
-	});
+	player = entities.playerPhysics(HEALTH);
 	world.add(player);
 
 	//shield physics
-	entities.shieldPhysics(SHIELD, HEALTH, function(physics) {
-		shield = physics;
-	});
+	shield = entities.shieldPhysics(SHIELD, HEALTH);
 	world.add(shield);
 
 	//object physics
-	entities.objectPhysics(function(physics) {
-		objects = physics;
-	});
+	objects = entities.objectPhysics();
 	for (var i = 0; i < objects.length; i++){
 		world.add(objects[i]);
 	}
 
 	//villager physics
-	entities.villagerPhysics(function(physics) {
-		villagers = physics;
-	});
+	villagers = entities.villagerPhysics();
 	for (var i = 0; i < villagers.length; i++){
 		world.add(villagers[i]);
 	}
@@ -452,57 +498,41 @@ function initThree() {
 	scene = new THREE.Scene();
 
 	//ground
-	entities.groundMesh(function(mesh) {
-		groundMesh = mesh;
-	});
+	groundMesh = entities.groundMesh();
 	scene.add(groundMesh);
 
 	//playerMesh
-	entities.playerMesh(HEALTH, function(mesh) {
-		playerMesh = mesh;
-	});
+	playerMesh = entities.playerMesh(HEALTH);
 	scene.add(playerMesh);
 
 	//playerMiniMesh
-	entities.playerMiniMesh(HEALTH, function(mesh) {
-		playerMiniMesh = mesh;
-	});
+	playerMiniMesh = entities.playerMiniMesh(HEALTH);
 	scene.add(playerMiniMesh);
 
 	//shieldMesh
-	entities.shieldMesh(SHIELD, HEALTH, function(mesh) {
-		shieldMesh = mesh;
-	});
+	shieldMesh = entities.shieldMesh(SHIELD, HEALTH);
 	scene.add(shieldMesh);
 
 	//objectMesh
-	entities.objectMesh(objects, function(mesh) {
-		objectMeshs = mesh;
-	});
+	objectMeshs = entities.objectMesh(objects);
 	for (var i = 0; i < objectMeshs.length; i++){
 		scene.add(objectMeshs[i]);
 	}
 
 	//objectMiniMesh
-	entities.objectMiniMesh(objects, function(mesh) {
-		objectMiniMeshs = mesh;
-	});
+	objectMiniMeshs = entities.objectMiniMesh(objects);
 	for (var i = 0; i < objectMiniMeshs.length; i++){
 		scene.add(objectMiniMeshs[i]);
 	}
 
 	//villagerMesh
-	entities.villagerMesh(villagers, function(mesh) {
-		villagerMeshs = mesh;
-	});
+	villagerMeshs = entities.villagerMesh(villagers);
 	for (var i = 0; i < villagerMeshs.length; i++){
 		scene.add(villagerMeshs[i]);
 	}
 
 	//villagerMiniMesh
-	entities.villagerMiniMesh(villagers, function(mesh) {
-		villagerMiniMeshs = mesh;
-	});
+	villagerMiniMeshs = entities.villagerMiniMesh(villagers);
 	for (var i = 0; i < villagerMiniMeshs.length; i++){
 		scene.add(villagerMiniMeshs[i]);
 	}
@@ -540,7 +570,7 @@ function initThree() {
 }
 
 function initBoids() {
-	flock = boids({
+	villagerFlock = boids({
 		boids: villagers.length, // The amount of boids to use
 		speedLimit: 5,           // Max steps to take per tick
 		accelerationLimit: 0.1,    // Max acceleration per tick
@@ -558,10 +588,10 @@ function initBoids() {
 		] //Edge of the map to contain villagers
 	});
 	for (var i = 0; i < villagers.length; i++) {
-		flock.boids[i][0] = villagers[i].position.x;
-		flock.boids[i][1] = villagers[i].position.z;
-		flock.boids[i][2] = 0;
-		flock.boids[i][3] = 0;
+		villagerFlock.boids[i][0] = villagers[i].position.x;
+		villagerFlock.boids[i][1] = villagers[i].position.z;
+		villagerFlock.boids[i][2] = 0;
+		villagerFlock.boids[i][3] = 0;
 	}
 }
 
@@ -600,20 +630,16 @@ function spawnBullet(e) {
 		x: player.position.x,
 		z: player.position.z,
 		m: NEW_DMG,
-		name: bullets.length - 1
+		name: bullets.length
 	};
 
 	//bullet physics
-	entities.bulletPhysics(data, function(physics) {
-		bullet = physics;
-	});
+	bullet = entities.bulletPhysics(data);
 	world.add(bullet);
 	bullets.push(bullet);
 
 	//bullet mesh
-	entities.bulletMesh(data, function(mesh) {
-		bulletMesh = mesh;
-	});
+	bulletMesh = entities.bulletMesh(data);
 	scene.add(bulletMesh);
 	bulletMeshs.push(bulletMesh);
 
@@ -636,6 +662,9 @@ function toggleMiniMap() {
 		for (var i = 0; i < villagerMiniMeshs.length; i++) {
 			villagerMiniMeshs[i].material.opacity = 0;
 		}
+		for (var i = 0; i < hunterMiniMeshs.length; i++) {
+			hunterMiniMeshs[i].material.opacity = 0;
+		}
 		toggleMapOn = false;
 	} else {
 		playerMiniMesh.material.opacity = 0.9;
@@ -645,33 +674,46 @@ function toggleMiniMap() {
 		for (var i = 0; i < villagerMiniMeshs.length; i++) {
 			villagerMiniMeshs[i].material.opacity = 0.9;
 		}
+		for (var i = 0; i < hunterMiniMeshs.length; i++) {
+			hunterMiniMeshs[i].material.opacity = 0.9;
+		}
 		toggleMapOn = true;
 	}
 }
 
 function updatePlayerHealth() {
-	NEW_CREDITS = NEW_CREDITS - 1;
-	NEW_HEALTH = NEW_HEALTH + 1;
-	var h = NEW_HEALTH + 20;
-	var s = NEW_SHIELD + NEW_HEALTH;
-	var m = NEW_HEALTH / 16;
-	player.shapes[0] = new CANNON.Box(new CANNON.Vec3(NEW_HEALTH, NEW_HEALTH, NEW_HEALTH));
-	player.mass = NEW_HEALTH;
-	player.updateMassProperties();
-	shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(s, s, s));
-	playerMesh.geometry = new THREE.BoxGeometry(h, h, h);
-	playerMiniMesh.geometry = new THREE.BoxGeometry(m, m, m);
-	shieldMesh.geometry = new THREE.BoxGeometry(s, s, s);
-	document.getElementById("health").innerHTML = NEW_HEALTH;
-	document.getElementById("credits").innerHTML = NEW_CREDITS;
+	if (NEW_CREDITS - 2 >= 0) {
+		NEW_CREDITS = NEW_CREDITS - 2;
+		NEW_HEALTH = NEW_HEALTH + 1;
+		var h = NEW_HEALTH + 20;
+		var s = NEW_SHIELD + NEW_HEALTH;
+		var m = NEW_HEALTH / 16;
+		player.shapes[0] = new CANNON.Box(new CANNON.Vec3(NEW_HEALTH, NEW_HEALTH, NEW_HEALTH));
+		player.mass = NEW_HEALTH;
+		player.updateMassProperties();
+		shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(s, s, s));
+		playerMesh.geometry = new THREE.BoxGeometry(h, h, h);
+		playerMiniMesh.geometry = new THREE.BoxGeometry(m, m, m);
+		shieldMesh.geometry = new THREE.BoxGeometry(s, s, s);
+	}
 }
 
 function animate() {
+
+	//keep stats up-to-date
+	document.getElementById("health").innerHTML = NEW_HEALTH;
+	document.getElementById("shield").innerHTML = NEW_SHIELD;
+	document.getElementById("speed").innerHTML = NEW_SPEED;
+	document.getElementById("dmg").innerHTML = NEW_DMG;
+	document.getElementById("credits").innerHTML = NEW_CREDITS;
 
 	//Keep player and villagers level
 	player.position.y = LEVEL;
 	for (var i = 0; i < villagers.length; i++) {
 		villagers[i].position.y = LEVEL;
+	}
+	for (var i = 0; i < hunters.length; i++) {
+		hunters[i].position.y = LEVEL;
 	}
 	for (var i = 0; i < objects.length; i++) {
 		objects[i].position.y = LEVEL;
@@ -690,7 +732,7 @@ function animate() {
 	if(key.isPressed("D")) {
 		player.position.z -= SPEED;
 	}
-	if(key.isPressed("1") && NEW_CREDITS >= 1) {
+	if(key.isPressed("1")) {
 		updatePlayerHealth();
 	}
 
@@ -699,6 +741,7 @@ function animate() {
 	updatePhysics();
 	handleHits();
 	removeEntities();
+	spawnEntities();
 
 	//camera should match playerMesh position
 	camera.position.x = CAMERA_START_X + playerMesh.position.x;
@@ -738,15 +781,22 @@ function updatePhysics() {
 		villagerMiniMeshs[i].position.z = playerMesh.position.z  + (villagerMeshs[i].position.z / 16);
 	}
 
+	for (var i = 0; i < hunterMeshs.length; i++) {
+		hunterMeshs[i].position.copy(hunters[i].position);
+		hunterMeshs[i].quaternion.copy(hunters[i].quaternion);
+		hunterMiniMeshs[i].position.x = playerMesh.position.x + (hunterMeshs[i].position.x / 16);
+		hunterMiniMeshs[i].position.z = playerMesh.position.z  + (hunterMeshs[i].position.z / 16);
+	}
+
 	shieldMesh.position.copy(player.position);
 	shieldMesh.quaternion.copy(player.quaternion);
 }
 
 function updateAI() {
-	flock.tick();
+	villagerFlock.tick();
 	for (var i = 0; i < villagers.length; i++) {
-		villagers[i].position.x = flock.boids[i][0];
-		villagers[i].position.z = flock.boids[i][1];
+		villagers[i].position.x = villagerFlock.boids[i][0];
+		villagers[i].position.z = villagerFlock.boids[i][1];
 	}
 }
 
@@ -787,12 +837,44 @@ function removeEntities() {
 				scene.remove(villagerMiniMeshs[villagersToRemove[i]]);
 				villagerMiniMeshs.splice(villagersToRemove[i], 1);
 
-				flock.boids.splice(villagersToRemove[i], 1);
+				villagerFlock.boids.splice(villagersToRemove[i], 1);
 			}
 		}
 	}
 	bulletsToRemove = [];
 	villagersToRemove = [];
+}
+
+function spawnEntities() {
+	if (villagersToHunters) {
+		for (var i = 0; i < villagersToHunters.length; i++) {
+
+			var data = {
+				m: villagersToHunters[i].mass,
+				x: villagersToHunters[i].position.x,
+				z: villagersToHunters[i].position.z,
+				aX: villagersToHunters[i].angularVelocity.x,
+				aY: villagersToHunters[i].angularVelocity.y,
+				aZ: villagersToHunters[i].angularVelocity.z,
+				name: hunters.length
+			};
+
+			var hunter = entities.hunterPhysics(data);
+			world.add(hunter);
+			hunters.push(hunter);
+
+			var hunterMesh = entities.hunterMesh(data);
+			scene.add(hunterMesh);
+			hunterMeshs.push(hunterMesh);
+
+			var hunterMiniMesh = entities.hunterMiniMesh(data);
+			scene.add(hunterMiniMesh);
+			hunterMiniMeshs.push(hunterMiniMesh);
+
+			//hunterFlock.boids.push();
+		}
+	}
+	villagersToHunters = [];
 }
 
 function handleHits() {
@@ -801,6 +883,10 @@ function handleHits() {
 			for (var v = 0; v < villagersHit.length; v++) {
 				if (villagers[i].id === villagersHit[v].id) {
 					if (villagers[i].mass - villagersHit[v].dmg > 10) {
+
+						//Give player credits
+						NEW_CREDITS = NEW_CREDITS + villagersHit[v].dmg;
+
 						var m = villagers[i].mass - villagersHit[v].dmg;
 						var h = m + 20;
 						var mini = h /16;
@@ -809,8 +895,23 @@ function handleHits() {
 						villagers[i].updateMassProperties();
 						villagerMeshs[i].geometry = new THREE.BoxGeometry(h, h, h);
 						villagerMiniMeshs[i].geometry = new THREE.BoxGeometry(mini, mini, mini);
+
+						//change villager to hunter
+						if (villagersToHunters.indexOf(i) === -1) {
+							villagersToHunters.push(villagers[i]);
+						}
+
+						//remvoe the villager
+						if (villagersToRemove.indexOf(i) === -1) {
+							villagersToRemove.push(i);
+						}
+
 					} else {
-						console.log(i);
+
+						//Give player credits
+						NEW_CREDITS = NEW_CREDITS + villagers[i].mass;
+
+						//remove the villager
 						if (villagersToRemove.indexOf(i) === -1) {
 							villagersToRemove.push(i);
 						}
