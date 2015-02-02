@@ -49,11 +49,6 @@ exports.playerPhysics = function(health) {
 	player.collisionFilterMask =  OBJECT | VILLAGER | HUNTER | ENEMY_BULLET;
 	player.linearDamping = 0.9;
 
-	player.addEventListener("collide",function(e){
-		//console.log("Collided with body:",e.body);
-		//console.log("Contact between bodies:",e.contact);
-	});
-
 	return player;
 };
 
@@ -93,19 +88,19 @@ exports.shieldPhysics = function(shield, health) {
 
 	var shieldShape = new CANNON.Box(new CANNON.Vec3(s, s, s));
 
-	var shield = new CANNON.Body({
-		mass: 1
+	var body = new CANNON.Body({
+		mass: s
 	});
-	shield.addShape(shieldShape);
-	shield.angularVelocity.set(0,1,0);
-	shield.angularDamping = 0;
-	shield.position.x = 0;
-	shield.position.y = LEVEL;
-	shield.position.z = 0;
-	shield.collisionFilterGroup = SHIELD;
-	shield.collisionFilterMask = ENEMY_BULLET;
+	body.addShape(shieldShape);
+	body.angularVelocity.set(0,1,0);
+	body.angularDamping = 0;
+	body.position.x = 0;
+	body.position.y = LEVEL;
+	body.position.z = 0;
+	body.collisionFilterGroup = SHIELD;
+	body.collisionFilterMask = ENEMY_BULLET;
 
-	return shield;
+	return body;
 };
 
 exports.shieldMesh = function(shield, health) {
@@ -144,7 +139,7 @@ exports.objectPhysics = function() {
 		object.quaternion.x = randomIntFromInterval(0, 1);
 		object.linearDamping = randomIntFromInterval(0.01, 0.9);
 		object.collisionFilterGroup = OBJECT;
-		object.collisionFilterMask =  PLAYER | OBJECT | BULLET | VILLAGER | HUNTER;
+		object.collisionFilterMask =  PLAYER | OBJECT | BULLET | VILLAGER | HUNTER | ENEMY_BULLET;
 		objects.push(object);
 	}
 
@@ -210,7 +205,7 @@ exports.bulletPhysics = function(data) {
 	bullet.velocity.x = data.velx;
 	bullet.velocity.z = data.velz;
 	bullet.collisionFilterGroup = BULLET;
-	bullet.collisionFilterMask =  OBJECT | BULLET | VILLAGER | HUNTER;
+	bullet.collisionFilterMask =  OBJECT | BULLET | VILLAGER | HUNTER | ENEMY_BULLET;
 	bullet.linearDamping = 0.5;
 
 	return bullet;
@@ -417,7 +412,7 @@ var hunters=[], hunterMeshs=[], hunterMiniMeshs=[];
 var villagerFlock, hunterFlock;
 
 var bulletsToRemove = [], villagersToRemove = [], huntersToRemove = [], enemyBulletsToRemove=[];
-var villagersHit = [], huntersHit = [];
+var villagersHit = [], huntersHit = [], playerHit=[], shieldHit=[];
 var villagersToHunters = [];
 var huntersDidShoot = [];
 
@@ -455,7 +450,8 @@ var sounds = [
 	{src:"music.mp3", id:"music"},
 	{src:"music2.mp3", id:"music2"},
 	{src:"shoot.wav", id:"shoot"},
-	{src:"hit.wav", id:"hit"}
+	{src:"hit.wav", id:"hit"},
+	{src:"hitShield.wav", id:"hitShield"}
 ];
 
 initSound();
@@ -471,6 +467,7 @@ function initSound () {
 		//music = createjs.Sound.play("music2", {loop: -1});
 		shootSound = createjs.Sound.createInstance("shoot");
 		hitSound = createjs.Sound.createInstance("hit");
+		hitShieldSound = createjs.Sound.createInstance("hitShield");
 	}, 3000);
 	document.getElementById('music').onclick = function () {
 		if (toggleSoundOn && music) {
@@ -498,6 +495,8 @@ function initCannon() {
 	//shield physics
 	shield = entities.shieldPhysics(SHIELD, HEALTH);
 	world.add(shield);
+
+	shield.addEventListener("collide", shieldGotHit);
 
 	//object physics
 	objects = entities.objectPhysics();
@@ -865,6 +864,11 @@ function updatePhysics() {
 	playerMiniMesh.position.x = playerMesh.position.x + (playerMesh.position.x / 16);
 	playerMiniMesh.position.z = playerMesh.position.z  + (playerMesh.position.z / 16);
 
+	shieldMesh.position.copy(player.position);
+	shieldMesh.quaternion.copy(player.quaternion);
+	shield.position.copy(player.position);
+	shield.quaternion.copy(player.quaternion);
+
 	for (var i = 0; i < objectMeshs.length; i++) {
 		objectMeshs[i].position.copy(objects[i].position);
 		objectMeshs[i].quaternion.copy(objects[i].quaternion);
@@ -896,8 +900,6 @@ function updatePhysics() {
 		hunterMiniMeshs[i].position.z = playerMesh.position.z  + (hunterMeshs[i].position.z / 16);
 	}
 
-	shieldMesh.position.copy(player.position);
-	shieldMesh.quaternion.copy(player.quaternion);
 }
 
 function updateAI() {
@@ -947,8 +949,24 @@ function hunterGotHit(e) {
 	}
 }
 
+function shieldGotHit(e) {
+	var v = Math.max(Math.abs(e.body.velocity.x), Math.abs(e.body.velocity.z));
+	if (e.body.collisionFilterGroup === 64 && v > 1) {
+		if(hitShieldSound) {
+			hitShieldSound.play();
+		}
+		var bulletIds = _.pluck(shieldHit, 'id');
+		if (bulletIds.indexOf(e.body.id) === -1) {
+			shieldHit.push({
+				id: e.body.id,
+				dmg: e.body.mass
+			});
+		}
+	}
+}
+
 function removeEntities() {
-	if (bulletsToRemove) {
+	if (bulletsToRemove.length) {
 		for (var i = 0; i < bulletsToRemove.length; i++) {
 			if (bullets[bulletsToRemove[i]]) {
 				world.remove(bullets[bulletsToRemove[i]]);
@@ -958,7 +976,7 @@ function removeEntities() {
 			}
 		}
 	}
-	if (enemyBulletsToRemove) {
+	if (enemyBulletsToRemove.length) {
 		for (var i = 0; i < enemyBulletsToRemove.length; i++) {
 			if (enemyBullets[enemyBulletsToRemove[i]]) {
 				world.remove(enemyBullets[enemyBulletsToRemove[i]]);
@@ -968,7 +986,7 @@ function removeEntities() {
 			}
 		}
 	}
-	if (villagersToRemove) {
+	if (villagersToRemove.length) {
 		for (var i = 0; i < villagersToRemove.length; i++) {
 			if (villagers[villagersToRemove[i]]) {
 				world.remove(villagers[villagersToRemove[i]]);
@@ -981,7 +999,7 @@ function removeEntities() {
 			}
 		}
 	}
-	if (huntersToRemove) {
+	if (huntersToRemove.length) {
 		for (var i = 0; i < huntersToRemove.length; i++) {
 			if (hunters[huntersToRemove[i]]) {
 				world.remove(hunters[huntersToRemove[i]]);
@@ -1001,7 +1019,7 @@ function removeEntities() {
 }
 
 function spawnEntities() {
-	if (villagersToHunters) {
+	if (villagersToHunters.length) {
 		for (var i = 0; i < villagersToHunters.length; i++) {
 
 			var data = {
@@ -1035,7 +1053,7 @@ function spawnEntities() {
 }
 
 function handleHits() {
-	if (villagersHit) {
+	if (villagersHit.length) {
 		for (var i = 0; i < villagers.length; i++) {
 			for (var v = 0; v < villagersHit.length; v++) {
 				if (villagers[i].id === villagersHit[v].id) {
@@ -1077,7 +1095,7 @@ function handleHits() {
 			}
 		}
 	}
-	if (huntersHit) {
+	if (huntersHit.length) {
 		for (var i = 0; i < hunters.length; i++) {
 			for (var v = 0; v < huntersHit.length; v++) {
 				if (hunters[i].id === huntersHit[v].id) {
@@ -1109,12 +1127,39 @@ function handleHits() {
 			}
 		}
 	}
+	if (shieldHit.length) {
+		for (var v = 0; v < shieldHit.length; v++) {
+
+			if (shield.mass - NEW_HEALTH - shieldHit[v].dmg > 0) {
+
+				NEW_SHIELD = NEW_SHIELD - shieldHit[v].dmg;
+
+				var m = shield.mass - shieldHit[v].dmg;
+				var h = m + NEW_HEALTH
+				shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(h, h, h));
+				shield.mass = m;
+				shield.updateMassProperties();
+				shieldMesh.geometry = new THREE.BoxGeometry(h, h, h);
+
+			} else {
+
+				NEW_SHIELD = 0;
+
+				var m = 1;
+				shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(m, m, m));
+				shield.mass = m;
+				shield.updateMassProperties();
+				shieldMesh.geometry = new THREE.BoxGeometry(m, m, m);
+			}
+		}
+	}
 	villagersHit = [];
 	huntersHit = [];
+	shieldHit = [];
 }
 
 function updateAttack() {
-	if(huntersDidShoot){
+	if(huntersDidShoot.length){
 		for (var i = 0; i < huntersDidShoot.length; i++) {
 			if (huntersDidShoot[i].wait <= 0) {
 				huntersDidShoot.splice(i, 1);
@@ -1143,13 +1188,10 @@ function render() {
 }
 
 function getDistance(x1, z1, x2, z2) {
-
 	var dx = Math.pow(x2 - x1, 2);
 	var dz = Math.pow(z2 - z1, 2);
-
-	var distance = Math.sqrt(dx + dz);
-
-	return distance
+	var d = Math.sqrt(dx + dz);
+	return d
 }
 
 },{"./entities":1,"boids":3,"cannon":5,"keymaster":7,"lodash":8,"three":9}],3:[function(require,module,exports){

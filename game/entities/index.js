@@ -48,11 +48,6 @@ exports.playerPhysics = function(health) {
 	player.collisionFilterMask =  OBJECT | VILLAGER | HUNTER | ENEMY_BULLET;
 	player.linearDamping = 0.9;
 
-	player.addEventListener("collide",function(e){
-		//console.log("Collided with body:",e.body);
-		//console.log("Contact between bodies:",e.contact);
-	});
-
 	return player;
 };
 
@@ -92,19 +87,19 @@ exports.shieldPhysics = function(shield, health) {
 
 	var shieldShape = new CANNON.Box(new CANNON.Vec3(s, s, s));
 
-	var shield = new CANNON.Body({
-		mass: 1
+	var body = new CANNON.Body({
+		mass: s
 	});
-	shield.addShape(shieldShape);
-	shield.angularVelocity.set(0,1,0);
-	shield.angularDamping = 0;
-	shield.position.x = 0;
-	shield.position.y = LEVEL;
-	shield.position.z = 0;
-	shield.collisionFilterGroup = SHIELD;
-	shield.collisionFilterMask = ENEMY_BULLET;
+	body.addShape(shieldShape);
+	body.angularVelocity.set(0,1,0);
+	body.angularDamping = 0;
+	body.position.x = 0;
+	body.position.y = LEVEL;
+	body.position.z = 0;
+	body.collisionFilterGroup = SHIELD;
+	body.collisionFilterMask = ENEMY_BULLET;
 
-	return shield;
+	return body;
 };
 
 exports.shieldMesh = function(shield, health) {
@@ -143,7 +138,7 @@ exports.objectPhysics = function() {
 		object.quaternion.x = randomIntFromInterval(0, 1);
 		object.linearDamping = randomIntFromInterval(0.01, 0.9);
 		object.collisionFilterGroup = OBJECT;
-		object.collisionFilterMask =  PLAYER | OBJECT | BULLET | VILLAGER | HUNTER;
+		object.collisionFilterMask =  PLAYER | OBJECT | BULLET | VILLAGER | HUNTER | ENEMY_BULLET;
 		objects.push(object);
 	}
 
@@ -209,7 +204,7 @@ exports.bulletPhysics = function(data) {
 	bullet.velocity.x = data.velx;
 	bullet.velocity.z = data.velz;
 	bullet.collisionFilterGroup = BULLET;
-	bullet.collisionFilterMask =  OBJECT | BULLET | VILLAGER | HUNTER;
+	bullet.collisionFilterMask =  OBJECT | BULLET | VILLAGER | HUNTER | ENEMY_BULLET;
 	bullet.linearDamping = 0.5;
 
 	return bullet;
