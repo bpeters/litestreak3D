@@ -95,6 +95,8 @@ function initCannon() {
 	player = entities.playerPhysics(HEALTH);
 	world.add(player);
 
+	player.addEventListener("collide", playerGotHit);
+
 	//shield physics
 	shield = entities.shieldPhysics(SHIELD, HEALTH);
 	world.add(shield);
@@ -426,16 +428,16 @@ function updatePlayerShieldRecharge() {
 }
 
 function updatePlayerSpeed() {
-	if (NEW_CREDITS - 5 >= 0) {
-		NEW_CREDITS = NEW_CREDITS - 5;
+	if (NEW_CREDITS - 10 >= 0) {
+		NEW_CREDITS = NEW_CREDITS - 10;
 		SPEED = SPEED + 1;
 		NEW_SPEED = NEW_SPEED + 1;
 	}
 }
 
 function updatePlayerDamage() {
-	if (NEW_CREDITS - 5 >= 0) {
-		NEW_CREDITS = NEW_CREDITS - 5;
+	if (NEW_CREDITS - 10 >= 0) {
+		NEW_CREDITS = NEW_CREDITS - 10;
 		DMG = DMG + 1;
 		NEW_DMG = NEW_DMG + 1;
 	}
@@ -614,6 +616,22 @@ function shieldGotHit(e) {
 		var bulletIds = _.pluck(shieldHit, 'id');
 		if (bulletIds.indexOf(e.body.id) === -1) {
 			shieldHit.push({
+				id: e.body.id,
+				dmg: e.body.mass
+			});
+		}
+	}
+}
+
+function playerGotHit(e) {
+	var v = Math.max(Math.abs(e.body.velocity.x), Math.abs(e.body.velocity.z));
+	if (e.body.collisionFilterGroup === 64 && v > 1 && NEW_SHIELD === 0) {
+		if(hitSound) {
+			hitSound.play();
+		}
+		var bulletIds = _.pluck(playerHit, 'id');
+		if (bulletIds.indexOf(e.body.id) === -1) {
+			playerHit.push({
 				id: e.body.id,
 				dmg: e.body.mass
 			});
@@ -811,9 +829,31 @@ function handleHits() {
 			}
 		}
 	}
+	if (playerHit.length) {
+		for (var v = 0; v < playerHit.length; v++) {
+
+			if (NEW_HEALTH - playerHit[v].dmg > 0) {
+
+				NEW_HEALTH = NEW_HEALTH - playerHit[v].dmg;
+				NEW_SHIELD_RECHARGE = SHIELD_RECHARGE;
+
+				var h = NEW_HEALTH + 20;
+				var m = NEW_HEALTH / 16;
+				player.shapes[0] = new CANNON.Box(new CANNON.Vec3(NEW_HEALTH, NEW_HEALTH, NEW_HEALTH));
+				player.mass = NEW_HEALTH;
+				player.updateMassProperties();
+				playerMesh.geometry = new THREE.BoxGeometry(h, h, h);
+				playerMiniMesh.geometry = new THREE.BoxGeometry(m, m, m);
+
+			} else {
+				gameOver();
+			}
+		}
+	}
 	villagersHit = [];
 	huntersHit = [];
 	shieldHit = [];
+	playerHit = [];
 }
 
 function updateAttack() {
@@ -866,5 +906,9 @@ function getDistance(x1, z1, x2, z2) {
 	var dx = Math.pow(x2 - x1, 2);
 	var dz = Math.pow(z2 - z1, 2);
 	var d = Math.sqrt(dx + dz);
-	return d
+	return d;
+}
+
+function gameOver() {
+	location.reload();
 }
