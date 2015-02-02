@@ -3,12 +3,13 @@ var THREE = require('three');
 var CANNON = require('cannon');
 
 // Collision filter groups - must be powers of 2!
-var PLAYER = 1; //player
-var SHIELD = 2; //shield
-var OBJECT = 4; //object
-var BULLET = 8; //bullet
-var VILLAGER = 16; //villager
-var HUNTER = 32; //hunter
+var PLAYER = 1;
+var SHIELD = 2;
+var OBJECT = 4;
+var BULLET = 8;
+var VILLAGER = 16;
+var HUNTER = 32;
+var ENEMY_BULLET = 64;
 
 var LEVEL = 500;
 
@@ -45,7 +46,7 @@ exports.playerPhysics = function(health) {
 	player.position.y = LEVEL;
 	player.position.z = 0;
 	player.collisionFilterGroup = PLAYER;
-	player.collisionFilterMask =  OBJECT | VILLAGER | HUNTER;
+	player.collisionFilterMask =  OBJECT | VILLAGER | HUNTER | ENEMY_BULLET;
 	player.linearDamping = 0.9;
 
 	player.addEventListener("collide",function(e){
@@ -102,7 +103,7 @@ exports.shieldPhysics = function(shield, health) {
 	shield.position.y = LEVEL;
 	shield.position.z = 0;
 	shield.collisionFilterGroup = SHIELD;
-	shield.collisionFilterMask = BULLET;
+	shield.collisionFilterMask = ENEMY_BULLET;
 
 	return shield;
 };
@@ -361,6 +362,45 @@ exports.hunterMiniMesh = function(data) {
 	return hunterMiniMesh;
 };
 
+exports.enemyBulletPhysics = function(data) {
+
+	var m = data.m;
+
+	var enemyBulletShape = new CANNON.Box(new CANNON.Vec3(m,m,m));
+
+	var enemyBullet = new CANNON.Body({
+		mass: m
+	});
+	enemyBullet.addShape(enemyBulletShape);
+	enemyBullet.position.x = data.x;
+	enemyBullet.position.y = LEVEL;
+	enemyBullet.position.z = data.z;
+	enemyBullet.angularVelocity.set(10, 10, 10);
+	enemyBullet.angularDamping = 0.5;
+	enemyBullet.velocity.x = data.velx;
+	enemyBullet.velocity.z = data.velz;
+	enemyBullet.collisionFilterGroup = ENEMY_BULLET;
+	enemyBullet.collisionFilterMask =  OBJECT | BULLET | PLAYER | ENEMY_BULLET | SHIELD;
+	enemyBullet.linearDamping = 0.5;
+
+	return enemyBullet;
+};
+
+exports.enemyBulletMesh = function(data) {
+
+	var m = data.m + 5;
+
+	var enemyBulletGeometry = new THREE.BoxGeometry(m, m, m);
+	var enemyBulletMaterial = new THREE.MeshLambertMaterial({
+			color: 0xcccccc
+	});
+	var enemyBulletMesh = new THREE.Mesh(enemyBulletGeometry, enemyBulletMaterial);
+	enemyBulletMesh.castShadow = true;
+	enemyBulletMesh.name = data.name;
+
+	return enemyBulletMesh;
+};
+
 },{"cannon":5,"three":9}],2:[function(require,module,exports){
 var THREE = require('three');
 var CANNON = require('cannon');
@@ -370,15 +410,18 @@ var _ = require('lodash');
 var entities = require('./entities');
 
 var shootSound, hitSound, music;
-var world, player, bullets=[], objects=[], villagers=[], shield, timeStep=1/60;
+var world, player, bullets=[], enemyBullets=[], objects=[], villagers=[], shield, timeStep=1/60;
 var camera, scene, light, webglRenderer, container;
-var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], villagerMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[];
+var groundMesh, playerMesh, playerMiniMesh, objectMeshs=[], villagerMeshs=[], objectMiniMeshs=[], shieldMesh, bulletMeshs=[], enemyBulletMeshs=[];
 var hunters=[], hunterMeshs=[], hunterMiniMeshs=[];
 var villagerFlock, hunterFlock;
 
-var bulletsToRemove = [], villagersToRemove = [], huntersToRemove = [];
+var bulletsToRemove = [], villagersToRemove = [], huntersToRemove = [], enemyBulletsToRemove=[];
 var villagersHit = [], huntersHit = [];
 var villagersToHunters = [];
+var huntersDidShoot = [];
+
+var hunterAttackWait = 0;
 
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
@@ -672,6 +715,46 @@ function spawnBullet(e) {
 
 }
 
+function spawnEnemyBullet(shooterx, shooterz, speed, mass) {
+
+	if(shootSound) {
+		shootSound.play();
+	}
+
+	var r = Math.atan2(player.position.z - shooterz, player.position.x - shooterx);
+
+	var velx =  Math.cos(r) * speed;
+	var velz = Math.sin(r) * speed;
+
+	var data = {
+		velx: velx,
+		velz: velz,
+		x: shooterx,
+		z: shooterz,
+		m: mass,
+		name: enemyBullets.length
+	};
+
+	//enemy bullet physics
+	var enemyBullet = entities.enemyBulletPhysics(data);
+	world.add(enemyBullet);
+	enemyBullets.push(enemyBullet);
+
+	//enemy bullet mesh
+	var enemyBulletMesh = entities.enemyBulletMesh(data);
+	scene.add(enemyBulletMesh);
+	enemyBulletMeshs.push(enemyBulletMesh);
+
+	enemyBullet.addEventListener("collide",function(e){
+		if (e.body.collisionFilterGroup === 1 || e.body.collisionFilterGroup === 2) {
+			if (enemyBulletsToRemove.indexOf(enemyBulletMesh.name) === -1) {
+				enemyBulletsToRemove.push(enemyBulletMesh.name);
+			}
+		}
+	});
+
+}
+
 function toggleMiniMap() {
 	if (toggleMapOn) {
 		playerMiniMesh.material.opacity = 0;
@@ -761,6 +844,7 @@ function animate() {
 	handleHits();
 	removeEntities();
 	spawnEntities();
+	updateAttack();
 
 	//camera should match playerMesh position
 	camera.position.x = CAMERA_START_X + playerMesh.position.x;
@@ -791,6 +875,11 @@ function updatePhysics() {
 	for (var i = 0; i < bulletMeshs.length; i++) {
 		bulletMeshs[i].position.copy(bullets[i].position);
 		bulletMeshs[i].quaternion.copy(bullets[i].quaternion);
+	}
+
+	for (var i = 0; i < enemyBulletMeshs.length; i++) {
+		enemyBulletMeshs[i].position.copy(enemyBullets[i].position);
+		enemyBulletMeshs[i].quaternion.copy(enemyBullets[i].quaternion);
 	}
 
 	for (var i = 0; i < villagerMeshs.length; i++) {
@@ -869,6 +958,16 @@ function removeEntities() {
 			}
 		}
 	}
+	if (enemyBulletsToRemove) {
+		for (var i = 0; i < enemyBulletsToRemove.length; i++) {
+			if (enemyBullets[enemyBulletsToRemove[i]]) {
+				world.remove(enemyBullets[enemyBulletsToRemove[i]]);
+				enemyBullets.splice(enemyBulletsToRemove[i], 1);
+				scene.remove(enemyBulletMeshs[enemyBulletsToRemove[i]]);
+				enemyBulletMeshs.splice(enemyBulletsToRemove[i], 1);
+			}
+		}
+	}
 	if (villagersToRemove) {
 		for (var i = 0; i < villagersToRemove.length; i++) {
 			if (villagers[villagersToRemove[i]]) {
@@ -896,6 +995,7 @@ function removeEntities() {
 		}
 	}
 	bulletsToRemove = [];
+	enemyBulletsToRemove = [];
 	villagersToRemove = [];
 	huntersToRemove = [];
 }
@@ -1013,9 +1113,43 @@ function handleHits() {
 	huntersHit = [];
 }
 
+function updateAttack() {
+	if(huntersDidShoot){
+		for (var i = 0; i < huntersDidShoot.length; i++) {
+			if (huntersDidShoot[i].wait <= 0) {
+				huntersDidShoot.splice(i, 1);
+			} else {
+				huntersDidShoot[i].wait--;
+			}
+		}
+	}
+	for(var i = 0; i < hunters.length; i++) {
+		var d = getDistance(hunters[i].position.x, hunters[i].position.z, player.position.x, player.position.z);
+		if (d <= 500) {
+			if (_.pluck(huntersDidShoot, 'id').indexOf(i) === -1) {
+				spawnEnemyBullet(hunters[i].position.x, hunters[i].position.z, 2000, 10);
+				huntersDidShoot.push({
+					id: i,
+					wait: 60
+				});
+			}
+		}
+	}
+}
+
 function render() {
 	camera.lookAt(playerMesh.position);
 	webglRenderer.render(scene, camera);
+}
+
+function getDistance(x1, z1, x2, z2) {
+
+	var dx = Math.pow(x2 - x1, 2);
+	var dz = Math.pow(z2 - z1, 2);
+
+	var distance = Math.sqrt(dx + dz);
+
+	return distance
 }
 
 },{"./entities":1,"boids":3,"cannon":5,"keymaster":7,"lodash":8,"three":9}],3:[function(require,module,exports){

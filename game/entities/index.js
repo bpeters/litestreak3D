@@ -2,12 +2,13 @@ var THREE = require('three');
 var CANNON = require('cannon');
 
 // Collision filter groups - must be powers of 2!
-var PLAYER = 1; //player
-var SHIELD = 2; //shield
-var OBJECT = 4; //object
-var BULLET = 8; //bullet
-var VILLAGER = 16; //villager
-var HUNTER = 32; //hunter
+var PLAYER = 1;
+var SHIELD = 2;
+var OBJECT = 4;
+var BULLET = 8;
+var VILLAGER = 16;
+var HUNTER = 32;
+var ENEMY_BULLET = 64;
 
 var LEVEL = 500;
 
@@ -44,7 +45,7 @@ exports.playerPhysics = function(health) {
 	player.position.y = LEVEL;
 	player.position.z = 0;
 	player.collisionFilterGroup = PLAYER;
-	player.collisionFilterMask =  OBJECT | VILLAGER | HUNTER;
+	player.collisionFilterMask =  OBJECT | VILLAGER | HUNTER | ENEMY_BULLET;
 	player.linearDamping = 0.9;
 
 	player.addEventListener("collide",function(e){
@@ -101,7 +102,7 @@ exports.shieldPhysics = function(shield, health) {
 	shield.position.y = LEVEL;
 	shield.position.z = 0;
 	shield.collisionFilterGroup = SHIELD;
-	shield.collisionFilterMask = BULLET;
+	shield.collisionFilterMask = ENEMY_BULLET;
 
 	return shield;
 };
@@ -358,4 +359,43 @@ exports.hunterMiniMesh = function(data) {
 		hunterMiniMesh.position.y = LEVEL + 200;
 
 	return hunterMiniMesh;
+};
+
+exports.enemyBulletPhysics = function(data) {
+
+	var m = data.m;
+
+	var enemyBulletShape = new CANNON.Box(new CANNON.Vec3(m,m,m));
+
+	var enemyBullet = new CANNON.Body({
+		mass: m
+	});
+	enemyBullet.addShape(enemyBulletShape);
+	enemyBullet.position.x = data.x;
+	enemyBullet.position.y = LEVEL;
+	enemyBullet.position.z = data.z;
+	enemyBullet.angularVelocity.set(10, 10, 10);
+	enemyBullet.angularDamping = 0.5;
+	enemyBullet.velocity.x = data.velx;
+	enemyBullet.velocity.z = data.velz;
+	enemyBullet.collisionFilterGroup = ENEMY_BULLET;
+	enemyBullet.collisionFilterMask =  OBJECT | BULLET | PLAYER | ENEMY_BULLET | SHIELD;
+	enemyBullet.linearDamping = 0.5;
+
+	return enemyBullet;
+};
+
+exports.enemyBulletMesh = function(data) {
+
+	var m = data.m + 5;
+
+	var enemyBulletGeometry = new THREE.BoxGeometry(m, m, m);
+	var enemyBulletMaterial = new THREE.MeshLambertMaterial({
+			color: 0xcccccc
+	});
+	var enemyBulletMesh = new THREE.Mesh(enemyBulletGeometry, enemyBulletMaterial);
+	enemyBulletMesh.castShadow = true;
+	enemyBulletMesh.name = data.name;
+
+	return enemyBulletMesh;
 };
