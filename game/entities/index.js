@@ -104,7 +104,7 @@ exports.shieldPhysics = function(shield, health) {
 
 exports.shieldMesh = function(shield, health) {
 
-	var s = shield + health;
+	var s = shield + health + 20;
 
 	var shieldGeometry = new THREE.BoxGeometry(s, s, s);
 	var shieldMaterial = new THREE.MeshLambertMaterial({

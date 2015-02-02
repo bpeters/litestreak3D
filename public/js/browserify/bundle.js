@@ -105,7 +105,7 @@ exports.shieldPhysics = function(shield, health) {
 
 exports.shieldMesh = function(shield, health) {
 
-	var s = shield + health;
+	var s = shield + health + 20;
 
 	var shieldGeometry = new THREE.BoxGeometry(s, s, s);
 	var shieldMaterial = new THREE.MeshLambertMaterial({
@@ -429,12 +429,14 @@ var LEVEL = 500;
 
 var HEALTH = 30;
 var SHIELD = 60;
-var SPEED = 10;
+var SHIELD_RECHARGE = 160;
+var SPEED = 100;
 var DMG = 5;
 var CREDITS = 100;
 
 var NEW_HEALTH = HEALTH;
 var NEW_SHIELD = SHIELD;
+var NEW_SHIELD_RECHARGE = SHIELD_RECHARGE;
 var NEW_SPEED = SPEED;
 var NEW_DMG = DMG;
 var NEW_CREDITS = CREDITS;
@@ -783,8 +785,9 @@ function toggleMiniMap() {
 }
 
 function updatePlayerHealth() {
-	if (NEW_CREDITS - 2 >= 0) {
-		NEW_CREDITS = NEW_CREDITS - 2;
+	if (NEW_CREDITS - 5 >= 0) {
+		NEW_CREDITS = NEW_CREDITS - 5;
+		HEALTH = HEALTH + 1;
 		NEW_HEALTH = NEW_HEALTH + 1;
 		var h = NEW_HEALTH + 20;
 		var s = NEW_SHIELD + NEW_HEALTH;
@@ -799,11 +802,50 @@ function updatePlayerHealth() {
 	}
 }
 
+function updatePlayerShield() {
+	if (NEW_CREDITS - 5 >= 0) {
+		NEW_CREDITS = NEW_CREDITS - 5;
+		SHIELD = SHIELD + 1;
+		NEW_SHIELD = NEW_SHIELD + 1;
+		var m = SHIELD;
+		var h = m + NEW_HEALTH;
+		shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(h, h, h));
+		shield.mass = m;
+		shield.updateMassProperties();
+		shieldMesh.geometry = new THREE.BoxGeometry(h, h, h);
+	}
+}
+
+function updatePlayerShieldRecharge() {
+	if (NEW_CREDITS - 5 >= 0 && SHIELD_RECHARGE > 30) {
+		NEW_CREDITS = NEW_CREDITS - 5;
+		SHIELD_RECHARGE = SHIELD_RECHARGE - 1;
+		NEW_SHIELD_RECHARGE = NEW_SHIELD_RECHARGE - 1;
+	}
+}
+
+function updatePlayerSpeed() {
+	if (NEW_CREDITS - 5 >= 0) {
+		NEW_CREDITS = NEW_CREDITS - 5;
+		SPEED = SPEED + 1;
+		NEW_SPEED = NEW_SPEED + 1;
+	}
+}
+
+function updatePlayerDamage() {
+	if (NEW_CREDITS - 5 >= 0) {
+		NEW_CREDITS = NEW_CREDITS - 5;
+		DMG = DMG + 1;
+		NEW_DMG = NEW_DMG + 1;
+	}
+}
+
 function animate() {
 
 	//keep stats up-to-date
 	document.getElementById("health").innerHTML = NEW_HEALTH;
 	document.getElementById("shield").innerHTML = NEW_SHIELD;
+	document.getElementById("shield-recharge").innerHTML = NEW_SHIELD_RECHARGE;
 	document.getElementById("speed").innerHTML = NEW_SPEED;
 	document.getElementById("dmg").innerHTML = NEW_DMG;
 	document.getElementById("credits").innerHTML = NEW_CREDITS;
@@ -822,19 +864,31 @@ function animate() {
 
 	//player input
 	if(key.isPressed("W")) {
-		player.position.x -= SPEED;
+		player.position.x -= (SPEED / 10);
 	}
 	if(key.isPressed("S")) {
-		player.position.x += SPEED;
+		player.position.x += (SPEED / 10);
 	}
 	if(key.isPressed("A")) {
-		player.position.z += SPEED;
+		player.position.z += (SPEED / 10);
 	}
 	if(key.isPressed("D")) {
-		player.position.z -= SPEED;
+		player.position.z -= (SPEED / 10);
 	}
 	if(key.isPressed("1")) {
 		updatePlayerHealth();
+	}
+	if(key.isPressed("2")) {
+		updatePlayerShield();
+	}
+	if(key.isPressed("3")) {
+		updatePlayerShieldRecharge();
+	}
+	if(key.isPressed("4")) {
+		updatePlayerSpeed();
+	}
+	if(key.isPressed("5")) {
+		updatePlayerDamage();
 	}
 
 	requestAnimationFrame(animate);
@@ -844,6 +898,7 @@ function animate() {
 	removeEntities();
 	spawnEntities();
 	updateAttack();
+	updateRecharge();
 
 	//camera should match playerMesh position
 	camera.position.x = CAMERA_START_X + playerMesh.position.x;
@@ -1130,12 +1185,13 @@ function handleHits() {
 	if (shieldHit.length) {
 		for (var v = 0; v < shieldHit.length; v++) {
 
-			if (shield.mass - NEW_HEALTH - shieldHit[v].dmg > 0) {
+			if (NEW_SHIELD - shieldHit[v].dmg > 0) {
 
 				NEW_SHIELD = NEW_SHIELD - shieldHit[v].dmg;
+				NEW_SHIELD_RECHARGE = SHIELD_RECHARGE;
 
 				var m = shield.mass - shieldHit[v].dmg;
-				var h = m + NEW_HEALTH
+				var h = m + NEW_HEALTH;
 				shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(h, h, h));
 				shield.mass = m;
 				shield.updateMassProperties();
@@ -1144,6 +1200,7 @@ function handleHits() {
 			} else {
 
 				NEW_SHIELD = 0;
+				NEW_SHIELD_RECHARGE = SHIELD_RECHARGE;
 
 				var m = 1;
 				shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(m, m, m));
@@ -1179,6 +1236,23 @@ function updateAttack() {
 				});
 			}
 		}
+	}
+}
+
+function updateRecharge() {
+	//shield recharge
+	if (NEW_SHIELD < SHIELD) {
+		NEW_SHIELD_RECHARGE--;
+	}
+	if (NEW_SHIELD_RECHARGE === 0) {
+		NEW_SHIELD = SHIELD;
+		NEW_SHIELD_RECHARGE = SHIELD_RECHARGE;
+		var m = SHIELD;
+		var h = m + NEW_HEALTH;
+		shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(h, h, h));
+		shield.mass = m;
+		shield.updateMassProperties();
+		shieldMesh.geometry = new THREE.BoxGeometry(h, h, h);
 	}
 }
 

@@ -24,16 +24,20 @@
   top: 100px;
   left: 20px;
 }
-#speed {
+#shield-recharge {
   top: 140px;
   left: 20px;
 }
-#dmg {
+#speed {
   top: 180px;
   left: 20px;
 }
-#credits {
+#dmg {
   top: 220px;
+  left: 20px;
+}
+#credits {
+  top: 260px;
   left: 20px;
 }
 
