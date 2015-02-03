@@ -450,7 +450,6 @@ var toggleSoundOn = false;
 //sounds
 var sounds = [
 	{src:"music.mp3", id:"music"},
-	{src:"music2.mp3", id:"music2"},
 	{src:"shoot.wav", id:"shoot"},
 	{src:"hit.wav", id:"hit"},
 	{src:"hitShield.wav", id:"hitShield"}
@@ -466,7 +465,7 @@ animate();
 function initSound () {
 	createjs.Sound.registerSounds(sounds, "assets/");
 	setTimeout(function(){
-		//music = createjs.Sound.play("music2", {loop: -1});
+		music = createjs.Sound.play("music", {loop: -1});
 		shootSound = createjs.Sound.createInstance("shoot");
 		hitSound = createjs.Sound.createInstance("hit");
 		hitShieldSound = createjs.Sound.createInstance("hitShield");
@@ -800,7 +799,7 @@ function updatePlayerHealth() {
 		shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(s, s, s));
 		playerMesh.geometry = new THREE.BoxGeometry(h, h, h);
 		playerMiniMesh.geometry = new THREE.BoxGeometry(m, m, m);
-		shieldMesh.geometry = new THREE.BoxGeometry(s, s, s);
+		shieldMesh.geometry = new THREE.BoxGeometry(s + 20, s + 20, s + 20);
 	}
 }
 
@@ -814,7 +813,7 @@ function updatePlayerShield() {
 		shield.shapes[0] = new CANNON.Box(new CANNON.Vec3(h, h, h));
 		shield.mass = m;
 		shield.updateMassProperties();
-		shieldMesh.geometry = new THREE.BoxGeometry(h, h, h);
+		shieldMesh.geometry = new THREE.BoxGeometry(h + 20, h + 20, h + 20);
 	}
 }
 
@@ -1089,6 +1088,10 @@ function removeEntities() {
 	enemyBulletsToRemove = [];
 	villagersToRemove = [];
 	huntersToRemove = [];
+
+	if (villagers.length === 0) {
+		gameOver();
+	}
 }
 
 function spawnEntities() {

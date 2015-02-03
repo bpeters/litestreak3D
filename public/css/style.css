@@ -3,10 +3,42 @@
   z-index: 1000;
   font-size: 20px;
   font-weight: bold;
+  color: #222;
   -webkit-user-select: none;
   -moz-user-select: none;
   -khtml-user-select: none;
   -ms-user-select: none;
+}
+.stats h1 {
+  font-size: 15px;
+  border-bottom: 1px solid #222;
+  color: #222;
+  font-weight: normal;
+  margin-bottom: 10px;
+}
+.health {
+  top: 60px;
+  left: 20px;
+}
+.shield {
+  top: 120px;
+  left: 20px;
+}
+.shield-recharge {
+  top: 180px;
+  left: 20px;
+}
+.speed {
+  top: 240px;
+  left: 20px;
+}
+.dmg {
+  top: 300px;
+  left: 20px;
+}
+.credits {
+  top: 360px;
+  left: 20px;
 }
 #music {
   top: 20px;
@@ -14,30 +46,5 @@
 }
 #music:hover {
   cursor: pointer;
-  color: #222222;
+  color: #aaa;
 }
-#health {
-  top: 60px;
-  left: 20px;
-}
-#shield {
-  top: 100px;
-  left: 20px;
-}
-#shield-recharge {
-  top: 140px;
-  left: 20px;
-}
-#speed {
-  top: 180px;
-  left: 20px;
-}
-#dmg {
-  top: 220px;
-  left: 20px;
-}
-#credits {
-  top: 260px;
-  left: 20px;
-}
-
