@@ -449,7 +449,7 @@ var toggleSoundOn = false;
 
 //sounds
 var sounds = [
-	{src:"music.mp3", id:"music"},
+	{src:"music.ogg", id:"music"},
 	{src:"shoot.wav", id:"shoot"},
 	{src:"hit.wav", id:"hit"},
 	{src:"hitShield.wav", id:"hitShield"}
